@@ -2,6 +2,8 @@
 
 **What if applications didn't exist?**
 
+The first experiment is runnable. [Open a world, generate a client view, and save a change](docs/first-experiment.md), or read [what the experiment established](docs/first-experiment-findings.md).
+
 Today's software usually combines three things:
 
 1. A system of record
@@ -365,7 +367,17 @@ If World needs to know what a button, form, dashboard or Kanban board is, the ab
 
 Very experimental.
 
-There is no settled architecture, protocol or language yet.
+The first experiment has a SQLite record service, an introspectable JSON protocol,
+and a generic browser client. Codex generates temporary view plans from the
+discovered schema and records. The client renders them and presents proposed
+changes for review. The record service validates and saves accepted changes,
+including permissions, versions and history.
+
+The service contains no UI definitions. View layouts and generation instructions
+belong to the client. A fresh client starts with a fresh interface, while the
+records and their history remain. [Run and verify the experiment](docs/first-experiment.md).
+
+There is no settled architecture or language yet.
 
 The first goal is not to build a production framework.
 

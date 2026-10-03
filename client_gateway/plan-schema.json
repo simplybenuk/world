@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["message", "view", "proposals"],
+  "properties": {
+    "message": {"type": "string"},
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description", "layout", "type", "record_ids", "fields", "group_by"],
+      "properties": {
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "layout": {"type": "string", "enum": ["list", "board", "table", "overview"]},
+        "type": {"type": "string"},
+        "record_ids": {"type": "array", "items": {"type": "string"}},
+        "fields": {"type": "array", "items": {"type": "string"}},
+        "group_by": {"type": ["string", "null"]}
+      }
+    },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "type", "id", "changes", "expected_version", "reason"],
+        "properties": {
+          "operation": {"type": "string", "enum": ["create", "update", "delete"]},
+          "type": {"type": "string"},
+          "id": {"type": ["string", "null"]},
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "value_json"],
+              "properties": {
+                "field": {"type": "string"},
+                "value_json": {"type": "string"}
+              }
+            }
+          },
+          "expected_version": {"type": ["integer", "null"]},
+          "reason": {"type": "string"}
+        }
+      }
+    }
+  }
+}

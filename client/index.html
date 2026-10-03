@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f5f0">
+    <meta name="description" content="A shared world of records, with a view for the work you need to do.">
+    <title>World</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div id="boot-screen" class="boot-screen" role="status"><span class="brand-mark" aria-hidden="true"></span><span>Opening World</span></div>
+
+    <main id="login-screen" class="login-screen" hidden>
+      <div class="login-card">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>world<span class="brand-dot">.</span></span></div>
+        <p class="eyebrow">A shared world, your own view</p>
+        <h1>Step into your world.</h1>
+        <p class="login-description">Sign in with a local access token. Your records are shared and saved. Each conversation starts with a fresh view.</p>
+        <form id="login-form">
+          <label for="access-token">Access token</label>
+          <input id="access-token" name="token" type="password" autocomplete="off" placeholder="Paste your access token" required>
+          <button id="login-button" class="button primary" type="submit">Open World <span aria-hidden="true">↗</span></button>
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+        </form>
+        <div class="login-help"><span>On this server, get a sign-in link with</span><code>python3 -m world.server access --actor ben</code><span>Run it in the project directory.</span></div>
+      </div>
+      <div class="login-foot">Records persist. Interfaces are temporary.</div>
+    </main>
+
+    <div id="app" class="app-shell" hidden>
+      <button id="sidebar-backdrop" class="sidebar-backdrop" aria-label="Close navigation" hidden></button>
+      <aside id="sidebar" class="sidebar" aria-label="World navigation">
+        <a class="brand" href="/" aria-label="World home"><span class="brand-mark" aria-hidden="true"></span><span>world<span class="brand-dot">.</span></span></a>
+        <div class="world-label"><span class="world-indicator"></span><span id="world-name">Your world</span><span class="local-label">LOCAL</span></div>
+        <nav aria-label="Explore records">
+          <button id="home-button" class="nav-item home-nav is-active"><span class="nav-icon" aria-hidden="true">⌘</span><span>Your view</span><span class="small-dot" aria-hidden="true"></span></button>
+          <div class="nav-heading">Record types <span id="type-total"></span></div>
+          <div id="type-navigation"></div>
+        </nav>
+        <div class="sidebar-bottom">
+          <button id="schema-button" class="nav-item"><span class="schema-icon" aria-hidden="true">◇</span><span>Discover schema</span><span class="nav-arrow" aria-hidden="true">↗</span></button>
+          <div class="sidebar-note"><span class="small-dot"></span><div>One shared world.<br>A view for right now.</div></div>
+          <div class="actor-block"><span id="actor-avatar" class="avatar">?</span><div class="actor-copy"><strong id="actor-name">Signed in</strong><span id="actor-role">Local session</span></div><button id="logout-button" class="icon-button" aria-label="Sign out" title="Sign out">↪</button></div>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div class="topbar-left"><button id="menu-button" class="icon-button menu-button" aria-label="Open navigation" aria-expanded="false">☰</button><span class="topbar-label">Shared records</span><span class="topbar-divider">/</span><span id="current-location">Your view</span></div>
+          <div class="topbar-right"><span id="connection-status" class="connection-status"><span class="status-dot"></span><span>Connecting</span></span><button id="activity-button" class="button quiet activity-button" aria-expanded="false" aria-controls="activity-drawer"><span aria-hidden="true">◷</span> Activity</button></div>
+        </header>
+        <div id="notification" class="notification" role="status" aria-live="polite" hidden></div>
+        <main id="workspace-main" class="workspace-main" tabindex="-1">
+          <div class="view-heading">
+            <div><div class="view-eyebrow"><span id="view-kind">A fresh start</span><span class="eyebrow-dot"></span><span class="session-label">This session only</span></div><h1 id="view-title">Your world, ready to explore.</h1><p id="view-description">Ask for what you need. Your client builds a view from the records you can see.</p></div>
+            <div id="view-actions" class="view-actions"></div>
+          </div>
+          <div id="view-meta" class="view-meta" hidden></div>
+          <section id="view-content" class="view-content" aria-label="Current view"></section>
+          <section id="proposals" class="proposals" aria-label="Proposed record changes" hidden></section>
+        </main>
+        <section class="conversation-dock" aria-label="Conversation">
+          <div id="assistant-response" class="assistant-response" aria-live="polite" hidden></div>
+          <form id="intent-form" class="composer">
+            <label class="sr-only" for="intent-input">Tell World what you need</label>
+            <span class="composer-symbol" aria-hidden="true">✳</span>
+            <textarea id="intent-input" name="message" rows="1" placeholder="Tell World what you need…" maxlength="4000" required></textarea>
+            <button id="send-button" class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
+          </form>
+          <div class="composer-foot"><span id="composer-hint">Enter to send · Shift + Enter for a new line</span><span class="persistence-note"><span class="small-dot"></span> Records saved on this server</span></div>
+        </section>
+      </div>
+
+      <button id="activity-backdrop" class="activity-backdrop" aria-label="Close activity" hidden></button>
+      <aside id="activity-drawer" class="activity-drawer" aria-label="Activity" hidden>
+        <div class="drawer-heading"><div><p class="eyebrow">Trace the changes</p><h2>Activity</h2></div><button id="activity-close" class="icon-button" aria-label="Close activity">×</button></div>
+        <div class="tab-bar"><button id="changes-tab" class="tab-button is-active" aria-pressed="true">Record history</button><button id="conversation-tab" class="tab-button" aria-pressed="false">Conversation</button></div>
+        <div id="activity-content" class="activity-content"></div>
+        <p id="activity-foot" class="drawer-foot">Record history persists across sessions.</p>
+      </aside>
+    </div>
+
+    <dialog id="record-dialog" class="record-dialog" aria-labelledby="record-dialog-title"><div id="record-dialog-content"></div></dialog>
+    <dialog id="schema-dialog" class="schema-dialog" aria-labelledby="schema-dialog-title"><div class="dialog-heading"><div><p class="eyebrow">Discovered from the server</p><h2 id="schema-dialog-title">The shape of your world</h2></div><button id="schema-close" class="icon-button" aria-label="Close schema">×</button></div><p class="schema-intro">Record types, fields, relationships, and the actions your account can take.</p><div id="schema-content"></div><p class="dialog-foot">This schema describes records and rules. The client creates the interface.</p></dialog>
+  </body>
+</html>
