@@ -11,11 +11,8 @@ import sqlite3
 from typing import Any, Iterator
 from uuid import uuid4
 
-from .schema import (
-    SCHEMA_VERSION, TYPE_DEFINITIONS, WORLD_NAME, WorldError, references,
-    require_type, validate_data, validate_value,
-)
-from .seed import seed_records
+from .definition import WorldDefinition
+from .schema import WorldError, references, require_type, validate_data, validate_value
 
 
 def _now() -> str:
@@ -33,7 +30,10 @@ class WorldStore:
     relationships, and capabilities. The audit event commits with the record.
     """
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, definition: WorldDefinition | None = None) -> None:
+        self.definition = definition if definition is not None else WorldDefinition.default()
+        if not isinstance(self.definition, WorldDefinition):
+            raise WorldError(400, "invalid_definition", "Pass a loaded WorldDefinition to the store.")
         self._keeper: sqlite3.Connection | None = None
         self._uri = str(path) == ":memory:"
         if self._uri:
@@ -45,7 +45,11 @@ class WorldStore:
             database.parent.mkdir(parents=True, exist_ok=True)
             self.path = str(database)
             self._database = self.path
-        self._initialize()
+        try:
+            self._initialize()
+        except BaseException:
+            self.close()
+            raise
 
     def close(self) -> None:
         """Release a shared in-memory database, if this store has one."""
@@ -94,7 +98,7 @@ class WorldStore:
                     value TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS records (
-                    type TEXT NOT NULL CHECK (type IN ('Person', 'Project', 'Task', 'Comment')),
+                    type TEXT NOT NULL,
                     id TEXT NOT NULL,
                     data TEXT NOT NULL,
                     version INTEGER NOT NULL CHECK (version > 0),
@@ -130,17 +134,29 @@ class WorldStore:
         finally:
             connection.close()
         with self._transaction(write=True) as connection:
-            if connection.execute("SELECT value FROM world_meta WHERE key = 'seed_version'").fetchone():
+            binding = connection.execute("SELECT value FROM world_meta WHERE key = 'definition_id'").fetchone()
+            seeded = connection.execute("SELECT value FROM world_meta WHERE key = 'seed_version'").fetchone()
+            existing = connection.execute("SELECT COUNT(*) FROM records").fetchone()[0]
+            if binding and binding["value"] != self.definition.id:
+                raise WorldError(409, "definition_mismatch", "This database belongs to a different world definition.")
+            if not binding and (seeded or existing) and self.definition.id != WorldDefinition.default().id:
+                raise WorldError(409, "definition_mismatch", "An existing unbound database can only be opened with the original team definition.")
+            if not binding:
+                connection.execute("INSERT INTO world_meta (key, value) VALUES ('definition_id', ?)", (self.definition.id,))
+            if seeded or existing:
+                self._validate_world(connection)
+                if not seeded:
+                    connection.execute("INSERT INTO world_meta (key, value) VALUES ('seed_version', '1')")
                 return
             now = _now()
-            for type_name, record_id, data in seed_records(datetime.now(timezone.utc).date()):
-                data = validate_data(type_name, data, actor_id="ben")
-                self._validate_relationships(connection, type_name, record_id, data)
+            for type_name, record_id, data in self.definition.seed_records(datetime.now(timezone.utc).date()):
+                data = validate_data(type_name, data, types=self.definition.types, actor_id=self.definition.actor_ids[0])
                 record = self._insert(connection, type_name, record_id, data, now)
                 self._audit(connection, "create", "system", {
-                    "requested_by": "system", "reason": "Initial working team.",
-                    "evidence": [{"source": "world.seed", "version": 1}],
+                    "requested_by": "system", "reason": "Initial records from the world definition.",
+                    "evidence": [{"source": "world.definition", "id": self.definition.id, "version": self.definition.version}],
                 }, None, record)
+            self._validate_world(connection)
             connection.execute("INSERT INTO world_meta (key, value) VALUES ('seed_version', '1')")
 
     @staticmethod
@@ -179,33 +195,53 @@ class WorldStore:
     def _actor(self, connection: sqlite3.Connection, actor_id: str) -> dict[str, Any]:
         if not isinstance(actor_id, str) or not actor_id:
             raise WorldError(401, "invalid_actor", "A valid actor is required.")
-        actor = self._raw(connection, "Person", actor_id)
+        actor = self._raw(connection, self.definition.actor_type, actor_id)
         if actor is None:
             raise WorldError(401, "invalid_actor", "The authenticated actor no longer exists.")
         return actor
 
-    def _project_for(
+    def _resolve(
+        self, connection: sqlite3.Connection, record: dict[str, Any], path: str,
+        *, include_deleted: bool = False,
+        records: dict[tuple[str, str], dict[str, Any]] | None = None,
+    ) -> Any:
+        """Follow a validated field path, resolving references using their types."""
+        parts = path.split(".")
+        current = record
+        for index, field in enumerate(parts):
+            descriptor = self.definition.types[current["type"]]["fields"][field]
+            value = current["data"].get(field)
+            if index == len(parts) - 1:
+                return value
+            if value is None:
+                return None
+            key = descriptor["target"], value
+            current = records.get(key) if records is not None else self._raw(connection, *key, include_deleted=include_deleted)
+            if current is None:
+                return None
+        return None
+
+    def _scope_for(
         self, connection: sqlite3.Connection, record: dict[str, Any],
         *, include_deleted: bool = False,
     ) -> dict[str, Any] | None:
-        type_name, data = record["type"], record["data"]
-        if type_name == "Project":
+        scope = self.definition.types[record["type"]]["policy"]["scope"]
+        if scope is None:
+            return None
+        if scope == "":
             return record
-        if type_name == "Comment":
-            task = self._raw(connection, "Task", data["task"], include_deleted=include_deleted)
-            return self._project_for(connection, task, include_deleted=include_deleted) if task else None
-        if type_name == "Task":
-            return self._raw(connection, "Project", data["project"], include_deleted=include_deleted)
-        return None
+        target_id = self._resolve(connection, record, scope, include_deleted=include_deleted)
+        return self._raw(connection, self.definition.scope_type(record["type"]), target_id, include_deleted=include_deleted) if target_id is not None else None
 
     def _can_read(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
     ) -> bool:
-        if actor["data"]["role"] == "admin" or record["type"] == "Person":
+        policy = self.definition.types[record["type"]]["policy"]
+        if actor["data"]["role"] == "admin" or policy["read"] == "authenticated":
             return True
-        project = self._project_for(connection, record, include_deleted=True)
-        return bool(project and (
-            project["data"]["visibility"] == "team" or actor["id"] in project["data"]["members"]
+        scope = self._scope_for(connection, record, include_deleted=True)
+        return bool(scope and (
+            scope["data"]["visibility"] == "team" or actor["id"] in scope["data"]["members"]
         ))
 
     def _can_update(
@@ -218,30 +254,33 @@ class WorldStore:
             return True
         if role != "member":
             return False
-        if record["type"] == "Person":
+        policy = self.definition.types[record["type"]]["policy"]
+        if policy["update"] == "admin":
+            return False
+        if policy["update"] == "self":
             return record["id"] == actor["id"]
-        project = self._project_for(connection, record)
-        return bool(project and actor["id"] in project["data"]["members"])
+        scope = self._scope_for(connection, record)
+        return bool(scope and actor["id"] in scope["data"]["members"])
 
     def _inbound(
         self, connection: sqlite3.Connection, type_name: str, record_id: str,
     ) -> list[dict[str, str]]:
         inbound = []
         for record in self._all(connection):
-            for field, target, target_id in references(record["type"], record["data"]):
+            for field, target, target_id in references(record["type"], record["data"], types=self.definition.types):
                 if target == type_name and target_id == record_id:
                     inbound.append({"type": record["type"], "id": record["id"], "field": field})
         return inbound
 
     def _admin_count(self, connection: sqlite3.Connection) -> int:
-        return sum(person["data"]["role"] == "admin" for person in self._all(connection, "Person"))
+        return sum(actor["data"]["role"] == "admin" for actor in self._all(connection, self.definition.actor_type))
 
     def _capabilities(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
     ) -> dict[str, bool]:
         admin = actor["data"]["role"] == "admin"
         last_admin = (
-            record["type"] == "Person" and record["data"]["role"] == "admin"
+            record["type"] == self.definition.actor_type and record["data"]["role"] == "admin"
             and self._admin_count(connection) == 1
         )
         return {
@@ -278,25 +317,28 @@ class WorldStore:
     def describe(self, actor_id: str) -> dict[str, Any]:
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
-            types = deepcopy(TYPE_DEFINITIONS)
+            types = deepcopy(self.definition.types)
             role = actor["data"]["role"]
-            membership = any(
-                actor_id in project["data"]["members"] for project in self._all(connection, "Project")
-            )
             for type_name, definition in types.items():
+                policy = definition["policy"]
+                scope_type = self.definition.scope_type(type_name)
+                membership = bool(scope_type and any(
+                    actor_id in scope["data"]["members"]
+                    for scope in self._all(connection, scope_type)
+                ))
                 definition["capabilities"] = {
                     "read": True,
-                    "create": role == "admin" or (
-                        role == "member" and membership and type_name in ("Task", "Comment")
-                    ),
+                    "create": role == "admin" or (role == "member" and policy["create"] == "member" and membership),
                     "update": role == "admin" or (role == "member" and (
-                        type_name == "Person" or membership
+                        policy["update"] == "self" or (policy["update"] == "member" and membership)
                     )),
                     "delete": role == "admin",
-                    "rules": definition.pop("rules"),
+                    "rules": deepcopy(definition.get("rules", {})),
                 }
             return {
-                "name": WORLD_NAME, "version": SCHEMA_VERSION, "types": types,
+                "id": self.definition.id, "name": self.definition.name,
+                "version": self.definition.version, "actor_type": self.definition.actor_type,
+                "types": types,
                 "actor": self._public(connection, actor, actor),
                 "query": {"operators": ["eq", "ne", "contains", "lt", "lte", "gt", "gte", "in"], "combine": "and"},
                 "mutations": {"concurrency": "expected_version is required for update and delete"},
@@ -304,7 +346,7 @@ class WorldStore:
 
     def list_records(self, actor_id: str, type_name: str | None = None) -> list[dict[str, Any]]:
         if type_name is not None:
-            require_type(type_name)
+            require_type(type_name, self.definition.types)
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             return [
@@ -313,7 +355,7 @@ class WorldStore:
             ]
 
     def get_record(self, actor_id: str, type_name: str, record_id: str) -> dict[str, Any]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             record = self._get_authorized(connection, actor, type_name, record_id)
@@ -323,8 +365,8 @@ class WorldStore:
         if not isinstance(filters, list):
             raise WorldError(400, "invalid_query", "Filters must be a list.")
         fields = {
-            **require_type(type_name)["fields"],
-            "id": {"type": "text"}, "type": {"type": "enum", "values": list(TYPE_DEFINITIONS)},
+            **require_type(type_name, self.definition.types)["fields"],
+            "id": {"type": "text"}, "type": {"type": "enum", "values": list(self.definition.types)},
             "version": {"type": "integer"},
             "created_at": {"type": "timestamp"}, "updated_at": {"type": "timestamp"},
         }
@@ -351,7 +393,7 @@ class WorldStore:
             for item in values:
                 if value_spec["type"] == "integer":
                     if type(item) is not int:
-                        raise WorldError(400, "invalid_query", "The version filter requires an integer.")
+                        raise WorldError(400, "invalid_query", "An integer filter requires an integer.")
                 elif value_spec["type"] == "timestamp":
                     if not isinstance(item, str):
                         raise WorldError(400, "invalid_query", "A timestamp filter requires a string.")
@@ -389,7 +431,7 @@ class WorldStore:
     def query(
         self, actor_id: str, type_name: str, filters: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         filters = self._filters(type_name, [] if filters is None else filters)
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
@@ -400,17 +442,25 @@ class WorldStore:
 
     def _authorize_create(
         self, connection: sqlite3.Connection, actor: dict[str, Any], type_name: str,
-        data: dict[str, Any],
+        data: dict[str, Any], provided: dict[str, Any],
     ) -> None:
         if actor["data"]["role"] == "admin":
             return
-        if actor["data"]["role"] != "member" or type_name not in ("Task", "Comment"):
+        policy = self.definition.types[type_name]["policy"]
+        if actor["data"]["role"] != "member" or policy["create"] != "member":
             self._deny()
-        project = self._project_for(connection, {"type": type_name, "data": data})
-        if not project or actor["id"] not in project["data"]["members"]:
-            self._deny("Only project members can create records in this project.")
-        if type_name == "Comment" and data["author"] != actor["id"]:
-            self._deny("A member can only create a comment attributed to themselves.")
+        scope = self._scope_for(connection, {"type": type_name, "data": data})
+        if not scope or actor["id"] not in scope["data"]["members"]:
+            self._deny("Only scope members can create records in this scope.")
+        author = policy.get("author_field")
+        if author and data.get(author) != actor["id"]:
+            self._deny("A member can only create a record attributed to themselves.")
+        protected = sorted(set(provided) & (set(policy["admin_fields"]) - {author}))
+        if protected:
+            raise WorldError(
+                403, "permission_denied", "Only an admin can set these fields.",
+                {"fields": protected},
+            )
 
     def _authorize_fields(
         self, actor: dict[str, Any], type_name: str, changes: dict[str, Any],
@@ -418,9 +468,9 @@ class WorldStore:
     ) -> None:
         if actor["data"]["role"] == "admin":
             return
-        protected = {"Person": {"role"}, "Project": {"members", "visibility"}, "Comment": {"author"}}
+        protected = self.definition.types[type_name]["policy"]["admin_fields"]
         changed_protected = [
-            field for field in protected.get(type_name, set())
+            field for field in protected
             if field in changes and changes[field] != before["data"].get(field)
         ]
         if changed_protected:
@@ -429,45 +479,55 @@ class WorldStore:
                 {"fields": sorted(changed_protected)},
             )
 
-    def _validate_relationships(
-        self, connection: sqlite3.Connection, type_name: str, record_id: str,
-        data: dict[str, Any],
+    def _validate_world(
+        self, connection: sqlite3.Connection, proposed: dict[str, Any] | None = None,
     ) -> None:
-        for field, target, target_id in references(type_name, data):
-            if self._raw(connection, target, target_id) is None:
+        """Check all live relationships against one proposed transactional state."""
+        records = {(record["type"], record["id"]): record for record in self._all(connection)}
+        if proposed is not None:
+            records[proposed["type"], proposed["id"]] = proposed
+        for record in records.values():
+            type_name = record["type"]
+            data = validate_data(type_name, record["data"], types=self.definition.types)
+            for field, target, target_id in references(type_name, data, types=self.definition.types):
+                if (target, target_id) not in records:
+                    raise WorldError(
+                        422, "invalid_reference", "A relationship must point to a live record of the required type.",
+                        {"type": type_name, "id": record["id"], "field": field, "target": target, "target_id": target_id},
+                    )
+        for record in records.values():
+            for constraint in self.definition.types[record["type"]].get("constraints", []):
+                if constraint["kind"] == "member_of":
+                    field = constraint["field"]
+                    value = self._resolve(connection, record, field, records=records)
+                    members = self._resolve(connection, record, constraint["members"], records=records)
+                    valid = (value is None and constraint.get("nullable", False)) or (
+                        value is not None and isinstance(members, list) and value in members
+                    )
+                    message = "The referenced record must belong to the declared members."
+                else:
+                    field = constraint["left"]
+                    left = self._resolve(connection, record, field, records=records)
+                    right = self._resolve(connection, record, constraint["right"], records=records)
+                    valid = (constraint.get("nullable", False) and (left is None or right is None)) or (
+                        left is not None and right is not None and left == right
+                    )
+                    message = "The declared relationships must refer to the same record."
+                if not valid:
+                    raise WorldError(
+                        422, "invalid_relationship", message,
+                        {"type": record["type"], "id": record["id"], "field": field},
+                    )
+
+    def _validate_transitions(self, before: dict[str, Any], proposed: dict[str, Any]) -> None:
+        for transition in self.definition.types[before["type"]].get("transitions", []):
+            field = transition["field"]
+            current, following = before["data"].get(field), proposed["data"].get(field)
+            if current != following and following not in transition["allowed"].get(current, []):
                 raise WorldError(
-                    422, "invalid_reference", "A relationship must point to a live record of the required type.",
-                    {"field": field, "target": target, "id": target_id},
+                    422, "invalid_transition", "This value cannot advance directly to the proposed value.",
+                    {"field": field, "current": current, "proposed": following, "allowed": transition["allowed"].get(current, [])},
                 )
-        if type_name == "Task":
-            project = self._raw(connection, "Project", data["project"])
-            if data["owner"] is not None and data["owner"] not in project["data"]["members"]:
-                raise WorldError(422, "invalid_relationship", "A task owner must be a member of its project.", {"field": "owner"})
-            for comment in self._all(connection, "Comment"):
-                if comment["data"]["task"] == record_id and comment["data"]["author"] not in project["data"]["members"]:
-                    raise WorldError(
-                        422, "invalid_relationship", "Moving this task would leave a comment author outside the project.",
-                        {"type": "Comment", "id": comment["id"], "field": "author"},
-                    )
-        elif type_name == "Comment":
-            project = self._project_for(connection, {"type": type_name, "data": data})
-            if data["author"] not in project["data"]["members"]:
-                raise WorldError(422, "invalid_relationship", "A comment author must be a member of the task's project.", {"field": "author"})
-        elif type_name == "Project":
-            tasks = {task["id"]: task for task in self._all(connection, "Task") if task["data"]["project"] == record_id}
-            for task in tasks.values():
-                owner = task["data"]["owner"]
-                if owner is not None and owner not in data["members"]:
-                    raise WorldError(
-                        422, "invalid_relationship", "A project member still owns a task in this project.",
-                        {"type": "Task", "id": task["id"], "field": "owner"},
-                    )
-            for comment in self._all(connection, "Comment"):
-                if comment["data"]["task"] in tasks and comment["data"]["author"] not in data["members"]:
-                    raise WorldError(
-                        422, "invalid_relationship", "A project member still authored a comment in this project.",
-                        {"type": "Comment", "id": comment["id"], "field": "author"},
-                    )
 
     def _provenance(
         self, connection: sqlite3.Connection, actor_id: str, action: str,
@@ -478,8 +538,8 @@ class WorldStore:
         if not isinstance(provenance, dict) or set(provenance) - {"requested_by", "reason", "evidence"}:
             raise WorldError(422, "invalid_provenance", "Provenance accepts requested_by, reason, and evidence. The actor comes from authentication.")
         requester = provenance.get("requested_by", actor_id)
-        if not isinstance(requester, str) or not requester or self._raw(connection, "Person", requester) is None:
-            raise WorldError(422, "invalid_provenance", "requested_by must identify a live Person.")
+        if not isinstance(requester, str) or not requester or self._raw(connection, self.definition.actor_type, requester) is None:
+            raise WorldError(422, "invalid_provenance", "requested_by must identify a live actor.")
         reason = provenance.get("reason", f"Record {action} requested.")
         if not isinstance(reason, str) or not reason.strip() or len(reason) > 20000:
             raise WorldError(422, "invalid_provenance", "reason must be nonempty text of at most 20000 characters.")
@@ -531,13 +591,14 @@ class WorldStore:
         self, actor_id: str, type_name: str, data: dict[str, Any],
         provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
-            data = validate_data(type_name, data, actor_id=actor_id)
-            self._authorize_create(connection, actor, type_name, data)
+            provided = data
+            data = validate_data(type_name, data, types=self.definition.types, actor_id=actor_id)
+            self._authorize_create(connection, actor, type_name, data, provided)
             record_id = f"{type_name.lower()}-{uuid4().hex}"
-            self._validate_relationships(connection, type_name, record_id, data)
+            self._validate_world(connection, {"type": type_name, "id": record_id, "data": data})
             provenance = self._provenance(connection, actor_id, "create", provenance)
             record = self._insert(connection, type_name, record_id, data, _now())
             self._audit(connection, "create", actor_id, provenance, None, record)
@@ -547,24 +608,25 @@ class WorldStore:
         self, actor_id: str, type_name: str, record_id: str, changes: dict[str, Any],
         expected_version: int, provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             before = self._get_authorized(connection, actor, type_name, record_id)
             if not self._can_update(connection, actor, before):
                 self._deny()
             self._check_version(before, expected_version)
-            changes = validate_data(type_name, changes, partial=True, actor_id=actor_id)
+            changes = validate_data(type_name, changes, types=self.definition.types, partial=True, actor_id=actor_id)
             if not changes:
                 raise WorldError(422, "empty_changes", "An update must include at least one field.")
             self._authorize_fields(actor, type_name, changes, before)
-            data = validate_data(type_name, {**before["data"], **changes}, actor_id=actor_id)
+            data = validate_data(type_name, {**before["data"], **changes}, types=self.definition.types, actor_id=actor_id)
             proposed = {**before, "data": data}
             if not self._can_update(connection, actor, proposed):
-                self._deny("The actor must be a member of both the current and destination projects.")
-            if type_name == "Person" and before["data"]["role"] == "admin" and data["role"] != "admin" and self._admin_count(connection) == 1:
+                self._deny("The actor must be a member of both the current and destination scopes.")
+            if type_name == self.definition.actor_type and before["data"]["role"] == "admin" and data["role"] != "admin" and self._admin_count(connection) == 1:
                 raise WorldError(409, "last_admin", "The world must retain at least one admin.")
-            self._validate_relationships(connection, type_name, record_id, data)
+            self._validate_transitions(before, proposed)
+            self._validate_world(connection, proposed)
             provenance = self._provenance(connection, actor_id, "update", provenance)
             connection.execute(
                 "UPDATE records SET data = ?, version = version + 1, updated_at = ? WHERE type = ? AND id = ?",
@@ -572,7 +634,7 @@ class WorldStore:
             )
             after = self._raw(connection, type_name, record_id)
             self._audit(connection, "update", actor_id, provenance, before, after)
-            if type_name == "Person" and record_id == actor_id:
+            if type_name == self.definition.actor_type and record_id == actor_id:
                 actor = after
             return self._public(connection, actor, after)
 
@@ -580,7 +642,7 @@ class WorldStore:
         self, actor_id: str, type_name: str, record_id: str, expected_version: int,
         provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             before = self._get_authorized(connection, actor, type_name, record_id)
@@ -590,7 +652,7 @@ class WorldStore:
             inbound = self._inbound(connection, type_name, record_id)
             if inbound:
                 raise WorldError(409, "record_referenced", "Remove live relationships before deleting this record.", {"references": inbound})
-            if type_name == "Person" and before["data"]["role"] == "admin" and self._admin_count(connection) == 1:
+            if type_name == self.definition.actor_type and before["data"]["role"] == "admin" and self._admin_count(connection) == 1:
                 raise WorldError(409, "last_admin", "The world must retain at least one admin.")
             provenance = self._provenance(connection, actor_id, "delete", provenance)
             now = _now()
@@ -603,7 +665,7 @@ class WorldStore:
             return self._public(connection, actor, after)
 
     def history(self, actor_id: str, type_name: str, record_id: str) -> list[dict[str, Any]]:
-        require_type(type_name)
+        require_type(type_name, self.definition.types)
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             self._get_authorized(connection, actor, type_name, record_id, include_deleted=True)

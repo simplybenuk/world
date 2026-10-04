@@ -1,0 +1,22 @@
+{
+  "northstar_pipeline": {
+    "type": "Opportunity",
+    "filters": [
+      {"field": "organization", "op": "eq", "value": "northstar"},
+      {"field": "stage", "op": "in", "value": ["lead", "qualified", "proposal"]}
+    ],
+    "select": ["name", "stage", "amount_minor", "currency", "organization.name", "owner.name", "contact.name"],
+    "include": [
+      {
+        "name": "latest_interaction",
+        "type": "Interaction",
+        "via": "opportunity",
+        "select": ["body", "occurred", "author.name"],
+        "order_by": "occurred",
+        "descending": true,
+        "limit": 1
+      }
+    ],
+    "limit": 20
+  }
+}

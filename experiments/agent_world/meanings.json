@@ -1,0 +1,26 @@
+{
+  "fields": {
+    "Opportunity": {
+      "amount_minor": {
+        "description": "Total proposed contract value in this fictional experiment. It is not annual recurring revenue.",
+        "unit": "minor_currency_unit",
+        "currency_field": "currency",
+        "minor_units_per_major": 100
+      },
+      "currency": {
+        "description": "The ISO currency code for amount_minor. GBP and USD amounts must not be added together without a declared conversion."
+      },
+      "close_date": {
+        "description": "The expected closing date of the opportunity, not a guarantee that it will close."
+      },
+      "stage": {
+        "description": "The accepted sales stage. Lead, qualified and proposal are open stages; won and lost are terminal. Permitted edits follow the declared transition map."
+      }
+    },
+    "Interaction": {
+      "occurred": {
+        "description": "The date of the customer interaction. It differs from the time at which the record was accepted into the system."
+      }
+    }
+  }
+}

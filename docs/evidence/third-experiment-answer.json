@@ -1,0 +1,44 @@
+{
+  "opportunities": [
+    {
+      "id": "northstar-pilot",
+      "name": "Northstar pilot",
+      "stage": "lead",
+      "amount_minor": 650000,
+      "currency": "GBP",
+      "organization_name": "Northstar Labs",
+      "owner_name": "Maya",
+      "contact_name": "Jordan Avery",
+      "next_stages": [
+        "qualified",
+        "lost"
+      ],
+      "latest_interaction": {
+        "id": "pilot-introduction",
+        "body": "Jordan asked for a pilot covering one department. Arrange a discovery call.",
+        "occurred": "2026-09-27",
+        "author_name": "Ben"
+      }
+    },
+    {
+      "id": "northstar-renewal",
+      "name": "Northstar renewal",
+      "stage": "qualified",
+      "amount_minor": 2400000,
+      "currency": "GBP",
+      "organization_name": "Northstar Labs",
+      "owner_name": "Ben",
+      "contact_name": "Jordan Avery",
+      "next_stages": [
+        "proposal",
+        "lost"
+      ],
+      "latest_interaction": {
+        "id": "renewal-discovery",
+        "body": "Jordan confirmed the renewal scope. Prepare a written proposal for the research team.",
+        "occurred": "2026-09-30",
+        "author_name": "Maya"
+      }
+    }
+  ]
+}

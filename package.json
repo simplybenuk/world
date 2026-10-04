@@ -3,7 +3,10 @@
   "private": true,
   "scripts": {
     "test": "python3 -m unittest discover -s tests -v",
-    "test:browser": "node tests/browser-smoke.mjs"
+    "test:browser": "node tests/browser-smoke.mjs",
+    "test:crm-browser": "node tests/crm-browser-smoke.mjs",
+    "test:agent-world": "python3 -W error::ResourceWarning -m unittest discover -s experiments/agent_world -t . -p 'test_*.py' -v",
+    "experiment:agent-world": "python3 -m experiments.agent_world.benchmark"
   },
   "devDependencies": {
     "playwright": "1.61.1"

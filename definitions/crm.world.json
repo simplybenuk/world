@@ -1,0 +1,219 @@
+{
+  "id": "crm",
+  "name": "CRM World",
+  "version": "0.2-prototype",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A fictional team member whose stored role governs access.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 160},
+        "email": {"type": "text", "nullable": true, "default": null, "max_length": 254},
+        "role": {"type": "enum", "required": true, "values": ["admin", "member", "viewer"], "default": "member"}
+      },
+      "rules": {
+        "read": "Any authenticated person can read team identities.",
+        "create": "Only admins can create identities.",
+        "update": "Admins can edit identities. Members can edit their own profile; only admins can change roles. Viewers cannot edit profiles.",
+        "delete": "Only admins can delete identities, after live relationships are removed and while retaining an admin."
+      },
+      "policy": {
+        "scope": null,
+        "read": "authenticated",
+        "create": "admin",
+        "update": "self",
+        "delete": "admin",
+        "admin_fields": ["role"]
+      }
+    },
+    "Organization": {
+      "description": "A fictional customer organization and the team members working with it.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 160},
+        "description": {"type": "text", "default": "", "max_length": 20000},
+        "members": {"type": "list", "required": true, "items": {"type": "reference", "target": "Person"}, "unique": true, "max_items": 1000},
+        "visibility": {"type": "enum", "required": true, "values": ["team", "private"], "default": "team"}
+      },
+      "rules": {
+        "read": "Team-visible organizations are readable by any authenticated person. Private organizations are readable by their members and admins.",
+        "create": "Only admins can create organizations.",
+        "update": "Admins can edit customer details. People with the member role can edit organizations they belong to. Only admins can change membership or visibility; dependent owners and authors must remain members.",
+        "delete": "Only admins can delete organizations, after live customer relationships are removed."
+      },
+      "policy": {
+        "scope": "",
+        "read": "scope",
+        "create": "admin",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": ["members", "visibility"]
+      }
+    },
+    "Contact": {
+      "description": "A person at one customer organization.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 160},
+        "email": {"type": "text", "required": true, "min_length": 1, "max_length": 254},
+        "organization": {"type": "reference", "target": "Organization", "required": true}
+      },
+      "rules": {
+        "read": "Contacts follow their organization's visibility and membership.",
+        "create": "Admins can create contacts. People with the member role can create contacts in organizations they belong to.",
+        "update": "Admins can edit contacts. People with the member role need membership in the current and destination organizations; related opportunities and interactions must remain consistent.",
+        "delete": "Only admins can delete contacts, after live opportunities and interactions stop referring to them."
+      },
+      "policy": {
+        "scope": "organization",
+        "read": "scope",
+        "create": "member",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": []
+      }
+    },
+    "Opportunity": {
+      "description": "A possible sale with its customer, owner, value, and current sales stage.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 300},
+        "organization": {"type": "reference", "target": "Organization", "required": true},
+        "contact": {"type": "reference", "target": "Contact", "nullable": true, "default": null},
+        "owner": {"type": "reference", "target": "Person", "nullable": true, "default": null},
+        "stage": {"type": "enum", "required": true, "values": ["lead", "qualified", "proposal", "won", "lost"], "default": "lead"},
+        "amount_minor": {"type": "integer", "required": true, "minimum": 0, "maximum": 1000000000000, "default": 0},
+        "currency": {"type": "enum", "required": true, "values": ["GBP", "USD"], "default": "GBP"},
+        "close_date": {"type": "date", "nullable": true, "default": null}
+      },
+      "rules": {
+        "read": "Opportunities follow their organization's visibility and membership.",
+        "create": "Admins can create opportunities. People with the member role can create opportunities in organizations they belong to. Owners must be organization members and contacts must belong to the organization. New opportunities may start at any declared stage.",
+        "update": "Admins can edit opportunities. People with the member role need membership in the current and destination organizations. Owners, contacts, and related interactions must remain consistent; stage changes must follow the declared transitions.",
+        "delete": "Only admins can delete opportunities, after live interactions stop referring to them."
+      },
+      "policy": {
+        "scope": "organization",
+        "read": "scope",
+        "create": "member",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": []
+      },
+      "constraints": [
+        {"kind": "member_of", "field": "owner", "members": "organization.members", "nullable": true},
+        {"kind": "same_reference", "left": "contact.organization", "right": "organization", "nullable": true}
+      ],
+      "transitions": [
+        {
+          "field": "stage",
+          "allowed": {
+            "lead": ["qualified", "lost"],
+            "qualified": ["proposal", "lost"],
+            "proposal": ["won", "lost"],
+            "won": [],
+            "lost": []
+          }
+        }
+      ]
+    },
+    "Interaction": {
+      "description": "A dated customer conversation, optionally associated with an opportunity.",
+      "fields": {
+        "body": {"type": "text", "required": true, "min_length": 1, "max_length": 20000},
+        "contact": {"type": "reference", "target": "Contact", "required": true},
+        "opportunity": {"type": "reference", "target": "Opportunity", "nullable": true, "default": null},
+        "author": {"type": "reference", "target": "Person", "required": true, "default": "$actor"},
+        "occurred": {"type": "date", "required": true}
+      },
+      "rules": {
+        "read": "Interactions follow the contact organization's visibility and membership.",
+        "create": "Admins can create interactions. People with the member role can create interactions in contact organizations they belong to, attributed to themselves. The author must be an organization member and any opportunity must belong to the same organization.",
+        "update": "Admins can edit interactions. People with the member role need membership in the current and destination contact organizations. Only admins can change authorship; author membership and opportunity organization must remain consistent.",
+        "delete": "Only admins can delete interactions."
+      },
+      "policy": {
+        "scope": "contact.organization",
+        "read": "scope",
+        "create": "member",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": ["author"],
+        "author_field": "author"
+      },
+      "constraints": [
+        {"kind": "member_of", "field": "author", "members": "contact.organization.members"},
+        {"kind": "same_reference", "left": "contact.organization", "right": "opportunity.organization", "nullable": true}
+      ]
+    }
+  },
+  "seed": [
+    {"type": "Person", "id": "ben", "data": {"name": "Ben", "email": "ben@example.test", "role": "admin"}},
+    {"type": "Person", "id": "maya", "data": {"name": "Maya", "email": "maya@example.test", "role": "member"}},
+    {"type": "Person", "id": "alex", "data": {"name": "Alex", "email": "alex@example.test", "role": "member"}},
+    {"type": "Person", "id": "sam", "data": {"name": "Sam", "email": "sam@example.test", "role": "viewer"}},
+    {
+      "type": "Organization", "id": "northstar",
+      "data": {
+        "name": "Northstar Labs",
+        "description": "Fictional research software customer reviewing a renewal and a small pilot.",
+        "members": ["ben", "maya", "alex"], "visibility": "team"
+      }
+    },
+    {
+      "type": "Organization", "id": "atlas",
+      "data": {
+        "name": "Atlas Studio",
+        "description": "Fictional design customer discussing a private expansion proposal.",
+        "members": ["ben", "alex"], "visibility": "private"
+      }
+    },
+    {"type": "Contact", "id": "northstar-jordan", "data": {"name": "Jordan Avery", "email": "jordan@northstar.example", "organization": "northstar"}},
+    {"type": "Contact", "id": "atlas-lee", "data": {"name": "Lee Morgan", "email": "lee@atlas.example", "organization": "atlas"}},
+    {
+      "type": "Opportunity", "id": "northstar-renewal",
+      "data": {
+        "name": "Northstar renewal", "organization": "northstar", "contact": "northstar-jordan",
+        "owner": "ben", "stage": "qualified", "amount_minor": 2400000, "currency": "GBP",
+        "close_date": {"relative_days": -2}
+      }
+    },
+    {
+      "type": "Opportunity", "id": "northstar-pilot",
+      "data": {
+        "name": "Northstar pilot", "organization": "northstar", "contact": "northstar-jordan",
+        "owner": "maya", "stage": "lead", "amount_minor": 650000, "currency": "GBP",
+        "close_date": {"relative_days": 7}
+      }
+    },
+    {
+      "type": "Opportunity", "id": "atlas-expansion",
+      "data": {
+        "name": "Atlas expansion", "organization": "atlas", "contact": "atlas-lee",
+        "owner": "alex", "stage": "proposal", "amount_minor": 4800000, "currency": "USD",
+        "close_date": {"relative_days": 4}
+      }
+    },
+    {
+      "type": "Interaction", "id": "renewal-discovery",
+      "data": {
+        "body": "Jordan confirmed the renewal scope. Prepare a written proposal for the research team.",
+        "contact": "northstar-jordan", "opportunity": "northstar-renewal", "author": "maya",
+        "occurred": {"relative_days": -4}
+      }
+    },
+    {
+      "type": "Interaction", "id": "pilot-introduction",
+      "data": {
+        "body": "Jordan asked for a pilot covering one department. Arrange a discovery call.",
+        "contact": "northstar-jordan", "opportunity": "northstar-pilot", "author": "ben",
+        "occurred": {"relative_days": -7}
+      }
+    },
+    {
+      "type": "Interaction", "id": "atlas-proposal-review",
+      "data": {
+        "body": "Lee is reviewing the expansion proposal with the studio's finance lead.",
+        "contact": "atlas-lee", "opportunity": "atlas-expansion", "author": "alex",
+        "occurred": {"relative_days": -1}
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 """HTTP record protocol and a separately implemented disposable client gateway."""
 
 import argparse
+import hashlib
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
@@ -12,6 +13,7 @@ import secrets
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from client_gateway.planner import ClientError, CodexPlanner, strict_json
+from world.definition import WorldDefinition
 from world.store import WorldError, WorldStore
 
 
@@ -22,10 +24,11 @@ DEFAULT_DATA_DIR = Path(os.environ.get("WORLD_DATA_DIR", "~/.local/share/world")
 class AccessTokens:
     """Server-issued actor credentials; roles always come from the world."""
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, actors=None):
         self.path = Path(data_dir) / "access.json"
+        actors = list(actors) if actors is not None else WorldDefinition.default().actor_ids
         if not self.path.exists():
-            tokens = {actor: secrets.token_urlsafe(32) for actor in ("ben", "maya", "alex", "sam")}
+            tokens = {actor: secrets.token_urlsafe(32) for actor in actors}
             descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(descriptor, "w") as stream:
                 json.dump(tokens, stream)
@@ -50,6 +53,11 @@ class WorldHTTPServer(ThreadingHTTPServer):
         self.store = store
         self.access = access
         self.planner = planner or CodexPlanner()
+        # Cookies are host-scoped, so different ports still need different names.
+        world_id = store.definition.id
+        self.session_cookie = "world_session" if world_id == "team" else (
+            "world_session_" + hashlib.sha256(world_id.encode()).hexdigest()[:12]
+        )
         super().__init__(address, WorldHandler)
 
 
@@ -85,7 +93,8 @@ class WorldHandler(BaseHTTPRequestHandler):
                 return self._static(path)
             if method == "GET" and path == "/health":
                 return self._respond(200, {"status": "ok", "provider": "codex", "provider_available": self.server.planner.available,
-                                           "world": "World", "protocol_version": "0.1"})
+                                           "world": self.server.store.definition.name,
+                                           "world_id": self.server.store.definition.id, "protocol_version": "0.1"})
             body = self._body() if method in {"POST", "PATCH", "DELETE"} else {}
             if method in {"POST", "PATCH", "DELETE"}:
                 self._check_origin()
@@ -94,14 +103,14 @@ class WorldHandler(BaseHTTPRequestHandler):
                 actor_id = self.server.access.actor_for(token)
                 if not actor_id:
                     raise ClientError(401, "invalid_token", "That sign-in token is not valid.")
-                actor = self.server.store.get_record(actor_id, "Person", actor_id)
+                actor = self.server.store.get_record(actor_id, self.server.store.definition.actor_type, actor_id)
                 return self._respond(200, {"actor": actor}, cookie=self._cookie(token))
             if path == "/api/session" and method == "DELETE":
-                return self._respond(200, {"signed_out": True}, cookie="world_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
+                return self._respond(200, {"signed_out": True}, cookie=self._cookie("", max_age=0))
             actor_id = self._actor()
             store = self.server.store
             if path == "/api/session" and method == "GET":
-                return self._respond(200, {"actor": store.get_record(actor_id, "Person", actor_id)})
+                return self._respond(200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id)})
             if path == "/api/world" and method == "GET":
                 return self._respond(200, store.describe(actor_id))
             if path == "/api/records" and method == "GET":
@@ -155,7 +164,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             jar = cookies.SimpleCookie()
             try:
                 jar.load(self.headers.get("Cookie", ""))
-                token = jar["world_session"].value if "world_session" in jar else None
+                name = self.server.session_cookie
+                token = jar[name].value if name in jar else None
             except cookies.CookieError:
                 token = None
         actor_id = self.server.access.actor_for(token)
@@ -221,8 +231,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             return self._respond(200, {"deleted": True, "type": type_name, "id": proposal.get("id")})
         raise ClientError(400, "invalid_proposal", "This record operation is not supported.")
 
-    def _cookie(self, token):
-        value = f"world_session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800"
+    def _cookie(self, token, max_age=604800):
+        value = f"{self.server.session_cookie}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}"
         if urlsplit(self.headers.get("Origin", "")).scheme == "https":
             value += "; Secure"
         return value
@@ -257,26 +267,40 @@ class WorldHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the first World experiment on this server.")
+    parser = argparse.ArgumentParser(description="Run a prototype World definition through the shared engine and client.")
     parser.add_argument("command", nargs="?", choices=["serve", "access"], default="serve")
     parser.add_argument("--host", default=os.environ.get("WORLD_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("WORLD_PORT", "8787")))
-    parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
-    parser.add_argument("--actor", default="ben", help="Actor to sign in as for the access command")
+    parser.add_argument("--world", type=Path, default=ROOT / "definitions" / "team.world.json", help="Declarative World definition")
+    parser.add_argument("--data-dir", type=Path, help="Database and local credentials directory")
+    parser.add_argument("--actor", help="Actor to sign in as, defaulting to the first declared identity")
     parser.add_argument("--url", default=os.environ.get("WORLD_URL"), help="Client base URL for the access command")
     args = parser.parse_args()
-    data_dir = args.data_dir.expanduser().resolve()
+    try:
+        definition = WorldDefinition.load(args.world.expanduser())
+    except (WorldError, OSError, ValueError) as error:
+        parser.error(str(error))
+    default_data = DEFAULT_DATA_DIR
+    if definition.id != "team" and not os.environ.get("WORLD_DATA_DIR"):
+        default_data = Path.home() / ".local" / "share" / ("world-" + definition.id)
+    data_dir = (args.data_dir or default_data).expanduser().resolve()
     data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(data_dir, 0o700)
-    access = AccessTokens(data_dir)
+    try:
+        store = WorldStore(data_dir / "world.sqlite3", definition=definition)
+    except WorldError as error:
+        parser.error(str(error))
+    access = AccessTokens(data_dir, actors=definition.actor_ids)
     if args.command == "access":
-        if args.actor not in access.tokens:
-            parser.error("Unknown actor. Choose ben, maya, alex or sam.")
+        actor_id = args.actor or definition.actor_ids[0]
+        if actor_id not in access.tokens:
+            store.close()
+            parser.error("Unknown actor. Choose " + ", ".join(sorted(access.tokens)) + ".")
         saved_url = data_dir / "client-url"
         base = args.url or (saved_url.read_text().strip() if saved_url.is_file() else f"http://localhost:{args.port}")
-        print(base.rstrip("/") + "/#token=" + access.tokens[args.actor])
+        print(base.rstrip("/") + "/#token=" + access.tokens[actor_id])
+        store.close()
         return
-    store = WorldStore(data_dir / "world.sqlite3")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     server = WorldHTTPServer((args.host, args.port), store, access)
     logging.info("World listening on %s:%s; data in %s", args.host, args.port, data_dir)
@@ -286,6 +310,7 @@ def main():
         pass
     finally:
         server.server_close()
+        store.close()
 
 
 if __name__ == "__main__":

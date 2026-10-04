@@ -193,24 +193,34 @@ class CodexPlanner:
                     if descriptor.get("required") and field not in normalized and "default" not in descriptor:
                         invalid()
             actor = description["actor"]
+            policy = types[type_name].get("policy", {})
             for field, value in normalized.items():
                 descriptor = types[type_name]["fields"][field]
                 try:
                     validate_value(field, value, descriptor)
                 except WorldError:
                     invalid()
-                rule = descriptor.get("write_rule", "")
                 if actor["data"].get("role") != "admin":
-                    protected = rule == "actor.role == admin" or (operation == "update" and "only admin can change" in rule)
+                    author_field = policy.get("author_field")
+                    protected = field in policy.get("admin_fields", []) and not (
+                        operation == "create" and field == author_field
+                    )
                     previous = by_id.get((type_name, proposal.get("id")), {}).get("data", {}).get(field)
                     if protected and (operation == "create" or value != previous):
                         invalid()
-                    if operation == "create" and "new record.author == actor.id" in rule and value != actor["id"]:
+                    if operation == "create" and author_field == field and value != actor["id"]:
                         invalid()
                 targets = [(descriptor["target"], value)] if descriptor["type"] == "reference" and value is not None else []
                 if descriptor["type"] == "list" and descriptor.get("items", {}).get("type") == "reference":
                     targets = [(descriptor["items"]["target"], item) for item in value]
                 if any((target, target_id) not in by_id for target, target_id in targets):
                     invalid()
+            if operation == "update":
+                before = by_id[type_name, proposal["id"]]["data"]
+                for transition in types[type_name].get("transitions", []):
+                    field = transition["field"]
+                    if field in normalized and normalized[field] != before[field]:
+                        if normalized[field] not in transition["allowed"].get(before[field], []):
+                            invalid()
             proposals.append({**proposal, "changes": normalized})
         return {"message": plan["message"], "view": view, "proposals": proposals, "provider": "codex"}

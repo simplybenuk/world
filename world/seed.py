@@ -1,4 +1,7 @@
-"""The initial working team. Seeding happens once, inside a store transaction."""
+"""Legacy first-experiment seed, retained as a reference.
+
+The shared prototype runtime seeds from definitions/*.world.json instead.
+"""
 
 from datetime import date, timedelta
 from typing import Any

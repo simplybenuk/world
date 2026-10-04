@@ -1,0 +1,384 @@
+{
+  "id": "team",
+  "name": "World",
+  "version": "0.1.0",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A person whose stored role governs their access.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true,
+          "min_length": 1,
+          "max_length": 160
+        },
+        "email": {
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "max_length": 254
+        },
+        "role": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "admin",
+            "member",
+            "viewer"
+          ],
+          "default": "member",
+          "write_rule": "actor.role == admin"
+        }
+      },
+      "rules": {
+        "read": "actor is authenticated",
+        "create": "actor.role == admin",
+        "update": "actor.role == admin or (actor.role == member and actor.id == record.id); only admin can change role",
+        "delete": "actor.role == admin and no live record references this person and another admin remains"
+      },
+      "policy": {
+        "scope": null,
+        "read": "authenticated",
+        "create": "admin",
+        "update": "self",
+        "delete": "admin",
+        "admin_fields": [
+          "role"
+        ]
+      }
+    },
+    "Project": {
+      "description": "A project containing tasks and a list of team members.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true,
+          "min_length": 1,
+          "max_length": 160
+        },
+        "description": {
+          "type": "text",
+          "default": "",
+          "max_length": 20000
+        },
+        "members": {
+          "type": "list",
+          "required": true,
+          "items": {
+            "type": "reference",
+            "target": "Person"
+          },
+          "unique": true,
+          "max_items": 1000,
+          "write_rule": "actor.role == admin"
+        },
+        "visibility": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "team",
+            "private"
+          ],
+          "default": "team",
+          "write_rule": "actor.role == admin"
+        }
+      },
+      "rules": {
+        "read": "actor.role == admin or record.visibility == team or actor.id in record.members",
+        "create": "actor.role == admin",
+        "update": "actor.role == admin or (actor.role == member and actor.id in record.members); only admin can change members or visibility",
+        "delete": "actor.role == admin and no live record references this project"
+      },
+      "policy": {
+        "scope": "",
+        "read": "scope",
+        "create": "admin",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": [
+          "members",
+          "visibility"
+        ]
+      }
+    },
+    "Task": {
+      "description": "Work belonging to one project, optionally assigned to a project member.",
+      "fields": {
+        "title": {
+          "type": "text",
+          "required": true,
+          "min_length": 1,
+          "max_length": 300
+        },
+        "description": {
+          "type": "text",
+          "default": "",
+          "max_length": 20000
+        },
+        "project": {
+          "type": "reference",
+          "target": "Project",
+          "required": true
+        },
+        "owner": {
+          "type": "reference",
+          "target": "Person",
+          "nullable": true,
+          "default": null
+        },
+        "status": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "todo",
+            "doing",
+            "done"
+          ],
+          "default": "todo"
+        },
+        "due": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        }
+      },
+      "constraints": [
+        {
+          "kind": "member_of",
+          "field": "owner",
+          "members": "project.members",
+          "nullable": true
+        }
+      ],
+      "rules": {
+        "read": "actor can read record.project",
+        "create": "actor.role == admin or (actor.role == member and actor.id in project.members)",
+        "update": "actor.role == admin or (actor.role == member and actor.id in current project.members and actor.id in proposed project.members)",
+        "delete": "actor.role == admin and no live record references this task"
+      },
+      "policy": {
+        "scope": "project",
+        "read": "scope",
+        "create": "member",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": []
+      }
+    },
+    "Comment": {
+      "description": "A comment attached to a task, attributed to a member of its project.",
+      "fields": {
+        "body": {
+          "type": "text",
+          "required": true,
+          "min_length": 1,
+          "max_length": 20000
+        },
+        "task": {
+          "type": "reference",
+          "target": "Task",
+          "required": true
+        },
+        "author": {
+          "type": "reference",
+          "target": "Person",
+          "required": true,
+          "default": "$actor",
+          "write_rule": "actor.role == admin or new record.author == actor.id; only admin can change an existing author"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "member_of",
+          "field": "author",
+          "members": "task.project.members"
+        }
+      ],
+      "rules": {
+        "read": "actor can read record.task.project",
+        "create": "actor.role == admin or (actor.role == member and actor.id in task.project.members and record.author == actor.id)",
+        "update": "actor.role == admin or (actor.role == member and actor.id in current task.project.members and actor.id in proposed task.project.members); only admin can change author",
+        "delete": "actor.role == admin"
+      },
+      "policy": {
+        "scope": "task.project",
+        "read": "scope",
+        "create": "member",
+        "update": "member",
+        "delete": "admin",
+        "admin_fields": [
+          "author"
+        ],
+        "author_field": "author"
+      }
+    }
+  },
+  "seed": [
+    {
+      "type": "Person",
+      "id": "ben",
+      "data": {
+        "name": "Ben",
+        "email": "ben@example.test",
+        "role": "admin"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "maya",
+      "data": {
+        "name": "Maya",
+        "email": "maya@example.test",
+        "role": "member"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "alex",
+      "data": {
+        "name": "Alex",
+        "email": "alex@example.test",
+        "role": "member"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "sam",
+      "data": {
+        "name": "Sam",
+        "email": "sam@example.test",
+        "role": "viewer"
+      }
+    },
+    {
+      "type": "Project",
+      "id": "website",
+      "data": {
+        "name": "Website",
+        "description": "Prepare the team website for launch.",
+        "members": [
+          "ben",
+          "maya",
+          "alex"
+        ],
+        "visibility": "team"
+      }
+    },
+    {
+      "type": "Project",
+      "id": "world",
+      "data": {
+        "name": "World",
+        "description": "Test persistent records with disposable clients.",
+        "members": [
+          "ben",
+          "alex"
+        ],
+        "visibility": "private"
+      }
+    },
+    {
+      "type": "Task",
+      "id": "documentation",
+      "data": {
+        "title": "Write documentation",
+        "description": "Explain the website launch and support process.",
+        "project": "website",
+        "owner": "ben",
+        "status": "todo",
+        "due": {
+          "relative_days": -1
+        }
+      }
+    },
+    {
+      "type": "Task",
+      "id": "homepage",
+      "data": {
+        "title": "Finish the homepage",
+        "description": "Review the copy and publish the final content.",
+        "project": "website",
+        "owner": "maya",
+        "status": "doing",
+        "due": {
+          "relative_days": 0
+        }
+      }
+    },
+    {
+      "type": "Task",
+      "id": "accessibility",
+      "data": {
+        "title": "Check website accessibility",
+        "description": "Check keyboard navigation and contrast.",
+        "project": "website",
+        "owner": "alex",
+        "status": "todo",
+        "due": {
+          "relative_days": 2
+        }
+      }
+    },
+    {
+      "type": "Task",
+      "id": "launch-announcement",
+      "data": {
+        "title": "Write the launch announcement",
+        "description": "The announcement draft is ready for launch.",
+        "project": "website",
+        "owner": "maya",
+        "status": "done",
+        "due": {
+          "relative_days": -2
+        }
+      }
+    },
+    {
+      "type": "Task",
+      "id": "world-protocol",
+      "data": {
+        "title": "Describe the record protocol",
+        "description": "Make types, relationships, and permissions discoverable.",
+        "project": "world",
+        "owner": "alex",
+        "status": "doing",
+        "due": {
+          "relative_days": -2
+        }
+      }
+    },
+    {
+      "type": "Task",
+      "id": "client-experiment",
+      "data": {
+        "title": "Try a second client",
+        "description": "Reopen the world and confirm that changes remain.",
+        "project": "world",
+        "owner": "ben",
+        "status": "todo",
+        "due": {
+          "relative_days": 3
+        }
+      }
+    },
+    {
+      "type": "Comment",
+      "id": "documentation-notes",
+      "data": {
+        "body": "Include the launch checklist and who to contact for support.",
+        "task": "documentation",
+        "author": "maya"
+      }
+    },
+    {
+      "type": "Comment",
+      "id": "protocol-notes",
+      "data": {
+        "body": "The client should discover rules before attempting a change.",
+        "task": "world-protocol",
+        "author": "ben"
+      }
+    }
+  ]
+}

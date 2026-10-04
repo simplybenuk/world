@@ -9,12 +9,6 @@ const state = {
 };
 const $ = (id) => document.getElementById(id);
 let authenticationQueue = Promise.resolve();
-const examples = [
-  ['Show me what needs attention.', 'Find a useful starting point', '◎'],
-  ['Make this more visual.', 'See the same records another way', '▤'],
-  ['Show the website project instead.', 'Focus on a different part of the world', '◇'],
-  ['Mark the documentation task as complete.', 'Propose a change to a shared record', '✓'],
-];
 const badgeColors = [
   ['#f0eee5', '#756a48'], ['#eaf0f2', '#4e727d'], ['#eaf0e4', '#577440'],
   ['#f0eaf2', '#765a80'], ['#f6ece5', '#8a694c'], ['#eceeee', '#5d7268'],
@@ -37,8 +31,24 @@ function labelFor(name, descriptor) {
   return descriptor?.label || String(name).replace(/[_-]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
 }
 function typeLabel(type) { return state.world?.types?.[type]?.label || labelFor(type); }
-function typePlural(type) { return state.world?.types?.[type]?.plural || `${typeLabel(type)}${/s$/i.test(type) ? '' : 's'}`; }
+function typePlural(type) {
+  const configured = state.world?.types?.[type]?.plural;
+  if (configured) return configured;
+  const label = typeLabel(type);
+  if (/[^aeiou]y$/i.test(label)) return label.replace(/y$/i, 'ies');
+  return `${label}${/(s|x|z|ch|sh)$/i.test(label) ? 'es' : 's'}`;
+}
 function fieldsFor(type) { return state.world?.types?.[type]?.fields || {}; }
+function promptSuggestions() {
+  const types = Object.keys(state.world?.types || {});
+  const type = types.find((name) => name !== (state.world?.actor_type || 'Person')) || types[0];
+  return [
+    ['Show me what needs attention.', 'Find a useful starting point', '◎'],
+    ['Show me an overview.', 'Explore the records you can read', '◇'],
+    ['Make this more visual.', 'See the same records another way', '▤'],
+    [type ? `Show me ${typeLabel(type)} records.` : 'Show me the records I can read.', 'Browse a discovered record type', '↗'],
+  ];
+}
 function recordKey(record) { return `${record.type}/${record.id}`; }
 function getRecord(type, id) { return state.records.find((record) => record.type === type && record.id === id); }
 function kindOf(descriptor) { return String(descriptor?.type || 'text').toLowerCase(); }
@@ -318,7 +328,7 @@ function renderWelcome(container) {
   const heading = el('div', 'section-heading');
   heading.append(el('h2', '', 'Find a starting point'), el('span', '', 'Or ask in your own words'));
   const grid = el('div', 'suggestion-grid');
-  examples.forEach(([message, description, symbol]) => {
+  promptSuggestions().forEach(([message, description, symbol]) => {
     const item = button('', 'suggestion-button', () => { $('intent-input').value = message; sizeComposer(); submitIntent(); }, message);
     const text = el('span', 'suggestion-copy'); text.append(el('strong', '', message), el('span', '', description));
     item.append(el('span', 'suggestion-symbol', symbol), text, el('span', 'suggestion-arrow', '↗'));
@@ -596,7 +606,10 @@ function eventElement(event, showRecord = true) {
   entry.append(title);
   const actor = event.requested_by || event.actor;
   let actorName = '';
-  if (typeof actor === 'string') actorName = recordLabel(getRecord('Person', actor)) === 'Unknown record' ? actor : recordLabel(getRecord('Person', actor));
+  if (typeof actor === 'string') {
+    const actorRecord = getRecord(state.world?.actor_type || 'Person', actor);
+    actorName = actorRecord ? recordLabel(actorRecord) : actor;
+  }
   else if (actor) actorName = actor.name || actor.data?.name || actor.id || '';
   if (actorName) entry.append(el('p', '', `By ${actorName}`));
   if (event.reason) entry.append(el('p', '', String(event.reason)));
@@ -711,8 +724,10 @@ function fieldControl(type, name, descriptor, value) {
     if (descriptor.max_length || descriptor.maxLength) input.maxLength = descriptor.max_length || descriptor.maxLength;
     if (descriptor.min_length || descriptor.minLength) input.minLength = descriptor.min_length || descriptor.minLength;
     if (kind === 'integer') input.step = '1';
-    if (descriptor.min !== undefined) input.min = descriptor.min;
-    if (descriptor.max !== undefined) input.max = descriptor.max;
+    const minimum = descriptor.minimum ?? descriptor.min;
+    const maximum = descriptor.maximum ?? descriptor.max;
+    if (minimum !== undefined) input.min = minimum;
+    if (maximum !== undefined) input.max = maximum;
     read = () => ['number', 'integer', 'float'].includes(kind) && input.value !== '' ? Number(input.value) : input.value;
   }
   input.id = id; input.name = name;
@@ -768,16 +783,19 @@ function openSchema() {
       if (descriptor.default !== undefined) description.append(el('p', '', `Default: ${plainValue(descriptor.default, descriptor)}`));
       if (descriptor.nullable) description.append(el('p', '', 'May be empty.'));
       if (descriptor.max_length) description.append(el('p', '', `Up to ${descriptor.max_length} characters.`));
+      if (descriptor.minimum !== undefined || descriptor.min !== undefined) description.append(el('p', '', `Minimum: ${descriptor.minimum ?? descriptor.min}`));
+      if (descriptor.maximum !== undefined || descriptor.max !== undefined) description.append(el('p', '', `Maximum: ${descriptor.maximum ?? descriptor.max}`));
       if (descriptor.write_rule) description.append(el('p', '', `Write rule: ${descriptor.write_rule}`));
       if (!description.children.length) description.append(el('span', '', 'Validated by the record service.'));
       field.append(label, description); card.append(field);
     });
     const rules = definition.rules || definition.capabilities?.rules;
-    if (rules || Object.values(definition.capabilities || {}).some((value) => typeof value === 'string')) {
+    if (rules || definition.constraints?.length || definition.transitions?.length || Object.values(definition.capabilities || {}).some((value) => typeof value === 'string')) {
       const section = el('div', 'schema-rules');
       const values = typeof rules === 'string' ? [rules] : Array.isArray(rules) ? rules : rules ? Object.entries(rules).map(([operation, rule]) => `${labelFor(operation)}: ${rule}`) : [];
       values.forEach((rule) => section.append(el('p', '', typeof rule === 'string' ? rule : JSON.stringify(rule))));
-      (definition.constraints || []).forEach((constraint) => section.append(el('p', '', `Constraint: ${constraint}`)));
+      (definition.constraints || []).forEach((constraint) => section.append(el('p', '', `Constraint: ${typeof constraint === 'string' ? constraint : JSON.stringify(constraint)}`)));
+      (definition.transitions || []).forEach((transition) => section.append(el('p', '', `Transition: ${typeof transition === 'string' ? transition : JSON.stringify(transition)}`)));
       Object.entries(definition.capabilities || {}).filter(([, value]) => typeof value === 'string').forEach(([operation, rule]) => section.append(el('p', '', `${labelFor(operation)}: ${rule}`)));
       card.append(section);
     }
