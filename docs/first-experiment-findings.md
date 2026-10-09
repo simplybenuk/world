@@ -56,3 +56,5 @@ engine and client. Use organizations, contacts, opportunities, and interactions,
 with access rules and at least one business constraint. Record which parts can
 be reused and which require changes. That comparison should inform the next
 version of the format before a broader framework is proposed.
+
+This has been done. See [the second experiment](second-experiment.md).

@@ -160,7 +160,7 @@ bodies must be JSON objects with `Content-Type: application/json`.
 | `POST /api/session` | Sign in with `{"token":"TOKEN"}` and receive a session cookie |
 | `GET /api/session` | Authenticated actor record |
 | `DELETE /api/session` | Clear the browser session cookie |
-| `GET /api/world` | Actor, types, fields, rules, capabilities, and query operators |
+| `GET /api/world` | Actor, types, fields, rules, capabilities, query operators, and the operations in this table |
 | `GET /api/types/Task` | Description of one type |
 | `GET /api/records?type=Task` | Visible records of one type; omit `type` for all visible records |
 | `POST /api/query` | `{"type":"Task","filters":[{"field":"status","op":"ne","value":"done"}]}` |
@@ -169,6 +169,8 @@ bodies must be JSON objects with `Content-Type: application/json`.
 | `PATCH /api/records/Task/documentation` | Update with `changes`, `expected_version`, `reason`, and optional `evidence` |
 | `DELETE /api/records/Task/ID` | Delete with `expected_version`, `reason`, and optional `evidence` |
 | `GET /api/history/Task/documentation` | Ordered audit events in `events` |
+| `GET /api/audit` | Plain-text audit of the records you can read, one line per event; `?limit=N` returns the latest N, 500 by default |
+| `GET /api/audit/Task/documentation` | The same lines for one record |
 
 Types are `Person`, `Project`, `Task`, and `Comment`. References contain plain
 record IDs, such as `"website"`, rather than `"Project#website"`. A record contains
@@ -183,6 +185,20 @@ The service checks relationships and permissions again for every mutation.
 History events use `action`, `at`, `actor`, `requested_by`, `reason`, `evidence`,
 `before`, and `after`. The before and after states contain the record's fields
 under `data`. A deletion retains the record's history.
+
+The audit is the same history as text a person can read, with views included.
+Each line gives the time, the actor, what they did, the record, and the detail:
+
+```text
+2026-10-09T06:32:22.939Z  priya  viewed  Opportunity harbor-pilot  Found by a query.
+2026-10-09T06:32:22.941Z  priya  changed  Opportunity harbor-pilot  stage from "proposal" to "lost"; lost_reason from null to "Budget frozen.". Reason: Harbor Logistics froze their budget.
+```
+
+The service writes a view line whenever it returns a record from a read, a list,
+a query, or a history request. The line commits with the read. View and event
+rows cannot be updated or deleted. Values longer than 120 characters are
+shortened in the audit and kept in full in the history. Reading the audit does
+not add a line.
 
 Errors return an `error` object with a `code` and `message`. Malformed input
 returns 400, missing authentication 401, denied access 403, and a missing record

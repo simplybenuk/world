@@ -4,6 +4,8 @@
 
 The first experiment is runnable. [Open a world, generate a client view, and save a change](docs/first-experiment.md), or read [what the experiment established](docs/first-experiment-findings.md).
 
+The second experiment [runs a CRM on the same engine and measures what an agent pays to use it](docs/second-experiment.md).
+
 Today's software usually combines three things:
 
 1. A system of record
@@ -252,6 +254,8 @@ because {
 
 History should be part of the model rather than an application logging feature added later.
 
+A person should be able to read it. World keeps a plain-text audit with one line for every time a record is created, viewed, changed, or deleted. Each line says when it happened, who did it, and what happened.
+
 ## The hypothesis
 
 World is based on a few assumptions worth testing.
@@ -376,6 +380,10 @@ including permissions, versions and history.
 The service contains no UI definitions. View layouts and generation instructions
 belong to the client. A fresh client starts with a fresh interface, while the
 records and their history remain. [Run and verify the experiment](docs/first-experiment.md).
+
+The engine now runs two worlds, a team and a small CRM, each written as a
+definition in `worlds/`. `python3 -m bench` measures what an agent reads and how
+many calls it makes to complete a task. [Read the second experiment](docs/second-experiment.md).
 
 There is no settled architecture or language yet.
 
