@@ -37,7 +37,7 @@ function labelFor(name, descriptor) {
   return descriptor?.label || String(name).replace(/[_-]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
 }
 function typeLabel(type) { return state.world?.types?.[type]?.label || labelFor(type); }
-function typePlural(type) { return state.world?.types?.[type]?.plural || `${typeLabel(type)}${/s$/i.test(type) ? '' : 's'}`; }
+function typePlural(type) { return state.world?.types?.[type]?.plural || typeLabel(type).replace(/([^aeiou])y$/i, '$1ie').replace(/([^s])$/i, '$1s'); }
 function fieldsFor(type) { return state.world?.types?.[type]?.fields || {}; }
 function recordKey(record) { return `${record.type}/${record.id}`; }
 function getRecord(type, id) { return state.records.find((record) => record.type === type && record.id === id); }
@@ -596,7 +596,7 @@ function eventElement(event, showRecord = true) {
   entry.append(title);
   const actor = event.requested_by || event.actor;
   let actorName = '';
-  if (typeof actor === 'string') actorName = recordLabel(getRecord('Person', actor)) === 'Unknown record' ? actor : recordLabel(getRecord('Person', actor));
+  if (typeof actor === 'string') actorName = recordLabel(getRecord(state.actor?.type, actor)) === 'Unknown record' ? actor : recordLabel(getRecord(state.actor?.type, actor));
   else if (actor) actorName = actor.name || actor.data?.name || actor.id || '';
   if (actorName) entry.append(el('p', '', `By ${actorName}`));
   if (event.reason) entry.append(el('p', '', String(event.reason)));
@@ -620,7 +620,7 @@ function openForm(type, record = null) {
     if (descriptor.readonly || descriptor.read_only) return;
     const value = record ? record.data[name] : descriptor.default === '$actor' ? state.actor.id : descriptor.default;
     const { field, read } = fieldControl(type, name, descriptor, value);
-    const protectedField = descriptor.write_rule === 'actor.role == admin' && state.actor?.data?.role !== 'admin';
+    const protectedField = descriptor.writable === false;
     if (protectedField) field.querySelectorAll('input,textarea,select,fieldset').forEach((control) => { control.disabled = true; });
     form.append(field); controls.set(name, { read, descriptor });
   });
