@@ -1,16 +1,20 @@
 """Run the measurements.
 
-    python3 -m bench            measurements that need no model
-    python3 -m bench agent      give each task to an agent that has only a URL and a token
+    python3 -m bench                    measurements that need no model
+    python3 -m bench control            the same, for the EspoCRM control (needs bench/control running)
+    python3 -m bench agent              give each task to an agent that has only a URL and a token
+    python3 -m bench agent --control    give the same tasks to the same agent against EspoCRM
 """
 
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -68,9 +72,93 @@ def measure_tasks():
     rows = []
     for task in crm.TASKS:
         with running() as world:
+            started = time.perf_counter()
             answer = task.solve(world.client(task.actor))
-            rows.append({"task": task.id, **world.usage(), "failures": task.check(world.store, answer)})
+            seconds = time.perf_counter() - started
+            rows.append({"task": task.id, **world.usage(), "milliseconds": round(seconds * 1000, 1),
+                         "failures": task.check(world.store, answer)})
     return rows
+
+
+def runtime_size():
+    """The Python interpreter and standard library this service runs on."""
+    library = Path(sys.modules["os"].__file__).parent
+    files = [file for file in library.rglob("*") if file.is_file() and "site-packages" not in file.parts and "__pycache__" not in file.parts]
+    return sum(file.stat().st_size for file in files) + Path(sys.executable).resolve().stat().st_size
+
+
+def resident_memory():
+    """Memory held by an idle World server with the seeded CRM, in bytes."""
+    with tempfile.TemporaryDirectory() as directory:
+        process = subprocess.Popen([sys.executable, "-m", "world.server", "--world", "crm", "--data-dir", directory, "--port", "0"],
+                                   cwd=ROOT, stderr=subprocess.DEVNULL)
+        try:
+            time.sleep(1.5)
+            status = Path(f"/proc/{process.pid}/status").read_text()
+            return int(next(line for line in status.splitlines() if line.startswith("VmRSS")).split()[1]) * 1024
+        finally:
+            process.terminate()
+            process.wait()
+
+
+def docker(*arguments):
+    return subprocess.run(["docker", *arguments], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def control(args):
+    """Size, self-description, and scripted tasks for EspoCRM, to set beside the World report."""
+    from .control import espocrm
+    compose = ["compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")]
+    users = espocrm.setup()
+    ids = espocrm.reset(users)
+    version = espocrm.Api().ok("GET", "Settings")["version"]
+    images = {name: int(docker("image", "inspect", name, "--format", "{{.Size}}")) for name in ("espocrm/espocrm:latest", "mariadb:11.4")}
+    measured = lambda service, path: int(docker(*compose, "exec", "-T", service, "du", "-sb", path).split()[0])
+    memory = {}
+    for line in docker("stats", "--no-stream", "--format", "{{.Name}} {{.MemUsage}}").splitlines():
+        name, used = line.split()[:2]
+        if name.startswith("world-control-"):
+            memory[name] = used
+    size = {
+        f"EspoCRM {version} release archive, compressed": 42_630_269,  # EspoCRM-10.0.9.zip on its GitHub release
+        "EspoCRM application files, installed": measured("espocrm", "/var/www/html"),
+        "EspoCRM container image (application, PHP, Apache)": images["espocrm/espocrm:latest"],
+        "MariaDB container image": images["mariadb:11.4"],
+        "seeded database directory": measured("db", "/var/lib/mysql"),
+    }
+    world_side = {
+        "World engine, protocol, and CRM definition": source_size("world", "worlds/crm.py", "worlds/__init__.py"),
+        "Python interpreter and standard library": runtime_size(),
+        "World server, idle memory": resident_memory(),
+    }
+    discovery = []
+    for actor in ("priya", "nina"):
+        meter = espocrm.Meter()
+        espocrm.Api(api_key=users[actor]["key"], port=meter.port).ok("GET", "Metadata")
+        discovery.append({"actor": actor, "metadata_bytes": meter.usage()["bytes_read"]})
+        meter.close()
+    tasks = []
+    for task in espocrm.TASKS:
+        ids = espocrm.reset(users)
+        started_at, meter = espocrm.now(), espocrm.Meter()
+        started = time.perf_counter()
+        answer = task.solve(espocrm.Api(api_key=users[task.actor]["key"], port=meter.port))
+        seconds = time.perf_counter() - started
+        tasks.append({"task": task.id, **meter.usage(), "milliseconds": round(seconds * 1000, 1),
+                      "failures": espocrm.checks(ids, started_at)[task.id](answer)})
+        meter.close()
+    print(f"## Control size: EspoCRM {version}\n")
+    print(table(["Part", "Bytes"], [(name, f"{value:,}") for name, value in size.items()]))
+    print("\nIdle memory: " + ", ".join(f"{name} {used}" for name, used in sorted(memory.items())))
+    print("\n## World, with what it needs to run\n")
+    print(table(["Part", "Bytes"], [(name, f"{value:,}") for name, value in world_side.items()]))
+    print("\n## Control self-description\n")
+    print(table(["Actor", "GET Metadata", "Rough tokens"], [
+        (row["actor"], f"{row['metadata_bytes']:,} B", f"{tokens(row['metadata_bytes']):,}") for row in discovery]))
+    print("\n## Control round trips per task, scripted shortest path, no discovery call\n")
+    print(table(["Task", "Calls", "Bytes read", "Milliseconds", "Outcome"], [
+        (row["task"], row["calls"], f"{row['bytes_read']:,}", row["milliseconds"], "; ".join(row["failures"]) or "correct") for row in tasks]))
+    save("control.json", {"version": version, "size": size, "memory": memory, "world": world_side, "discovery": discovery, "tasks": tasks})
 
 
 def measure_recovery():
@@ -108,9 +196,9 @@ def report(args):
         (row["actor"], row["role"], f"{row['describe_bytes']:,} B", f"{tokens(row['describe_bytes']):,}",
          f"{row['all_records_bytes']:,} B", f"{tokens(row['all_records_bytes']):,}", row["records"]) for row in result["discovery"]]))
     print("\n## Round trips per task, scripted shortest path\n")
-    print(table(["Task", "Calls", "Bytes read", "Rough tokens", "Outcome"], [
-        (row["task"], row["calls"], f"{row['bytes_read']:,}", f"{tokens(row['bytes_read']):,}", "; ".join(row["failures"]) or "correct")
-        for row in result["tasks"]]))
+    print(table(["Task", "Calls", "Bytes read", "Rough tokens", "Milliseconds", "Outcome"], [
+        (row["task"], row["calls"], f"{row['bytes_read']:,}", f"{tokens(row['bytes_read']):,}", row["milliseconds"],
+         "; ".join(row["failures"]) or "correct") for row in result["tasks"]]))
     print("\n## Recovery from a rejected request\n")
     print(table(["Mistake", "Rejected with", "Details given", "Extra lookups", "Retry", "Recovered in one call"], [
         (row["mistake"], f"{row['status']} {row['code']}", ", ".join(row["details"]) or "none", row["lookups"],
@@ -150,41 +238,79 @@ def codex_command(workspace, answer):
     ]
 
 
+CONTROL_PROMPT = """A CRM is running at {url}. It is EspoCRM, and its JSON API is under {url}/api/v1.
+Send the header "X-Api-Key: {token}" with every request.
+You have no other documentation.
+Use curl. Do not read or write local files.
+
+{task}
+
+Finish with a short plain-text answer: what you found or changed, or why you could not."""
+
+
+@contextmanager
+def world_target(task):
+    """A fresh World for one task: its prompt, its meter, and its checker."""
+    with running() as world:
+        def finish(answer):
+            changed = [(row["type"], row["id"]) for row in changed_records(world.store)]
+            return task.check(world.store, answer), all(crm._reason_given(world.store, *record) for record in changed)
+        yield PROMPT.format(url=world.url, token=world.access.tokens[task.actor], task=task.prompt), world, finish
+
+
+@contextmanager
+def control_target(task, users):
+    from .control import espocrm
+    ids = espocrm.reset(users)
+    started, meter = espocrm.now(), espocrm.Meter()
+    try:
+        finish = lambda answer: (espocrm.checks(ids, started)[task.id](answer), None)
+        yield CONTROL_PROMPT.format(url=meter.url, token=users[task.actor]["key"], task=task.prompt), meter, finish
+    finally:
+        meter.close()
+
+
 def agent(args):
     crm.SEEDED.update(seeded_ids())
     tasks = [task for task in crm.TASKS if not args.task or task.id in args.task]
+    users = None
+    if args.control:
+        from .control import espocrm
+        users = espocrm.setup()
     rows = []
-    for task in tasks:
-        with running() as world, tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
-            answer_file = Path(workspace) / "answer.txt"
-            prompt = PROMPT.format(url=world.url, token=world.access.tokens[task.actor], task=task.prompt)
-            command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
-            environment = {**os.environ, "WORLD_URL": world.url, "WORLD_TOKEN": world.access.tokens[task.actor],
-                           "WORLD_ANSWER_FILE": str(answer_file)}
-            started = time.monotonic()
-            try:
-                process = subprocess.run(command, input=prompt, capture_output=True, text=True, timeout=args.timeout,
-                                         cwd=workspace, env=environment)
-                output, timed_out = process.stdout, False
-            except subprocess.TimeoutExpired:
-                output, timed_out = "", True
-            seconds = round(time.monotonic() - started, 1)
-            answer = answer_file.read_text() if answer_file.exists() else output
-            failures = ["The agent timed out."] if timed_out else task.check(world.store, answer)
-            changed = [(row["type"], row["id"]) for row in changed_records(world.store)]
-            rows.append({
-                "task": task.id, "correct": not failures, "failures": failures, **world.usage(), "seconds": seconds,
-                "requests": [list(request) for request in world.requests], "answer": answer.strip(),
-                "own_reasons": all(crm._reason_given(world.store, *record) for record in changed),
-            })
-            print(f"{task.id}: {'correct' if not failures else '; '.join(failures)} "
-                  f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
+    for run in range(1, args.repeat + 1):
+        for task in tasks:
+            target = control_target(task, users) if args.control else world_target(task)
+            with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
+                answer_file = Path(workspace) / "answer.txt"
+                command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
+                environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
+                started = time.monotonic()
+                try:
+                    process = subprocess.run(command, input=prompt, capture_output=True, text=True, timeout=args.timeout,
+                                             cwd=workspace, env=environment)
+                    output, timed_out = process.stdout, False
+                except subprocess.TimeoutExpired:
+                    output, timed_out = "", True
+                seconds = round(time.monotonic() - started, 1)
+                answer = answer_file.read_text() if answer_file.exists() else output
+                failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
+                if not meter.requests:
+                    failures = ["The agent made no requests."]
+                rows.append({
+                    "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
+                    "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
+                })
+                print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
+                      f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
     print()
-    print(table(["Task", "Correct", "Calls", "Rejected", "Bytes read", "Rough tokens", "Seconds", "Gave its own reasons"], [
-        (row["task"], "yes" if row["correct"] else "no", row["calls"], row["rejected"], f"{row['bytes_read']:,}",
-         f"{tokens(row['bytes_read']):,}", row["seconds"], "yes" if row["own_reasons"] else "no") for row in rows]))
-    print(f"\n{sum(row['correct'] for row in rows)} of {len(rows)} tasks correct.")
-    save(f"agent-{args.label}.json", rows)
+    reasons = {True: "yes", False: "no", None: "n/a"}
+    print(table(["Task", "Run", "Correct", "Calls", "Rejected", "Bytes read", "Rough tokens", "Seconds", "Gave its own reasons"], [
+        (row["task"], row["run"], "yes" if row["correct"] else "no", row["calls"], row["rejected"], f"{row['bytes_read']:,}",
+         f"{tokens(row['bytes_read']):,}", row["seconds"], reasons[row["own_reasons"]]) for row in rows]))
+    print(f"\n{sum(row['correct'] for row in rows)} of {len(rows)} task runs correct, {sum(row['calls'] for row in rows)} calls, "
+          f"{sum(row['rejected'] for row in rows)} rejected.")
+    save(f"agent-{'control-' if args.control else ''}{args.label}.json", rows)
 
 
 def changed_records(store):
@@ -197,13 +323,16 @@ def main():
     parser = argparse.ArgumentParser(prog="python3 -m bench", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="mode")
     runner = commands.add_parser("agent", help="Run the tasks with an agent; this uses that agent's model account")
-    runner.add_argument("--command", help="Agent command. It receives the prompt on standard input and WORLD_URL, WORLD_TOKEN, "
-                        "and WORLD_ANSWER_FILE in its environment. Its answer is that file, or else its standard output. Default: codex exec")
+    commands.add_parser("control", help="Measure the EspoCRM control without a model")
+    runner.add_argument("--command", help="Agent command. It receives the prompt on standard input and WORLD_ANSWER_FILE in its "
+                        "environment. Its answer is that file, or else its standard output. Default: codex exec")
+    runner.add_argument("--control", action="store_true", help="Run against EspoCRM instead of World")
+    runner.add_argument("--repeat", type=int, default=1, help="Run every task this many times")
     runner.add_argument("--task", action="append", choices=[task.id for task in crm.TASKS], help="Run only this task; repeatable")
     runner.add_argument("--label", default="codex", help="Name for the saved results file")
     runner.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args()
-    (agent if args.mode == "agent" else report)(args)
+    {"agent": agent, "control": control}.get(args.mode, report)(args)
 
 
 if __name__ == "__main__":

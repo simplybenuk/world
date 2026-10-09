@@ -146,6 +146,67 @@ Two changes followed:
 
 The second run made no rejected calls and gave its own reason for every change.
 
+## The control: EspoCRM
+
+The control is EspoCRM 10.0.9 with MariaDB, started from
+`bench/control/compose.yaml`. It holds the same people, organizations, contacts,
+opportunities, and notes as the CRM world, loaded from the same seed. Priya, Tom,
+and Nina are API users with roles that match the world's rules. An
+administrator's before-save script adds the one rule EspoCRM does not ship: only
+an administrator can change a closed opportunity.
+
+```sh
+docker compose -f bench/control/compose.yaml up -d
+python3 -m bench control
+```
+
+The agent run against the control has not been done yet. When it has, both
+sides get the same five prompts and the same agent:
+
+```sh
+python3 -m bench agent --repeat 3
+python3 -m bench agent --control --repeat 3
+```
+
+### Size
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| The application itself | 81 KB of source | 42.6 MB release archive, 172 MB installed |
+| With what it needs to run | 66 MB with Python and its standard library | 1.53 GB as two container images |
+| Idle memory | 29 MB | 218 MB across the two containers |
+| Seeded data on disk | 57 KB | 200 MB database directory |
+
+The EspoCRM images include an operating system, and its database directory is
+mostly MariaDB's own files at this size. World's figures are for this machine's
+Python install with no container. Read the last two rows of each column as what
+you would carry, not as a like-for-like count of application bytes.
+
+### Self-description
+
+World describes itself in 7.3 KB. EspoCRM's equivalent, `GET /api/v1/Metadata`,
+is 248 KB for a rep, roughly 62,000 tokens. An agent that already knows
+EspoCRM's API from training does not need it. An agent that does not has no
+smaller place to look.
+
+### Scripted tasks
+
+A client that already knows each API, with no model involved:
+
+| Task | World calls | World ms | EspoCRM calls | EspoCRM ms |
+| --- | --- | --- | --- | --- |
+| Total my open pipeline | 2 | 12 | 1 | 20 |
+| Mark a renewal won and note why | 4 | 25 | 3 | 106 |
+| Mark a pilot lost | 3 | 6 | 2 | 59 |
+| Add a contact and make them primary | 4 | 25 | 3 | 122 |
+| Refuse a change to a closed opportunity | 2 | 4 | 2 | 45 |
+
+World makes one more call per task because its script reads the description
+first. EspoCRM's script skips discovery. Its times include a local counting
+proxy, which adds a few milliseconds.
+
+Recovery from rejected requests is not measured for the control yet.
+
 ## Open questions
 
 - Creating a record that names a missing organization returns 403, not a
@@ -157,9 +218,9 @@ The second run made no rejected calls and gave its own reason for every change.
 
 ## Next
 
-1. Run the same five tasks, with the same agent, against an existing open-source
-   CRM through its own API. Record its installed size alone and with everything
-   it needs to run. That is the control this experiment lacks.
+1. Run the agent against both sides, three times per task, with the commands in
+   "The control" above. The control is installed and its scripted figures are
+   in. Only the agent run is missing.
 2. Reduce the description. Candidates are sending only the types a request
    names, shortening field definitions, and replacing rule text with rules the
    engine evaluates.

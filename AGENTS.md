@@ -41,6 +41,11 @@ work on improving both. The long-term picture is an enterprise-sized system that
 fits on a USB key.
 
 - The control must be an existing open-source CRM, not one written here.
+- The control is EspoCRM, chosen by Claude on 2026-10-09 because each user gets
+  an API key and a role, so the tasks run as the same people with the same
+  limits. `bench/control/` starts and seeds it. See `docs/second-experiment.md`.
+- The agent comparison is still to run: `python3 -m bench agent --repeat 3`, then
+  the same with `--control`. It spends the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.
 
