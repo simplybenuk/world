@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
+import re
 from pathlib import Path
 import sqlite3
 from typing import Any, Iterator
@@ -17,6 +18,13 @@ from .schema import WorldError, references, require_type, validate_data, validat
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _agent(value: Any) -> str | None:
+    """The name of the software acting for the actor, or None when they act directly."""
+    if value is not None and (not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", value)):
+        raise WorldError(422, "invalid_agent", "An agent name is up to 64 letters, digits, dots, hyphens, or underscores.")
+    return value
 
 
 def _json(value: Any) -> str:
@@ -160,6 +168,10 @@ class WorldStore:
                         SELECT RAISE(ABORT, 'World history is append-only');
                     END;
             """)
+            # Databases from before agents were named gain the column, empty for old rows.
+            for table in ("events", "views"):
+                if "agent" not in [row["name"] for row in connection.execute(f"PRAGMA table_info({table})")]:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN agent TEXT")
         finally:
             connection.close()
         with self._transaction(write=True) as connection:
@@ -178,7 +190,7 @@ class WorldStore:
                 self._validate_relationships(connection, None, type_name, record_id, data, None)
                 record = self._insert(connection, type_name, record_id, data, now)
                 self._audit(connection, "create", "system", {
-                    "requested_by": "system", "reason": self.definition.seed_reason,
+                    "requested_by": "system", "reason": self.definition.seed_reason, "agent": None,
                     "evidence": [{"source": f"worlds.{self.definition.name}", "version": 1}],
                 }, None, record)
             connection.execute("INSERT INTO world_meta (key, value) VALUES ('seed_version', '1')")
@@ -306,32 +318,37 @@ class WorldStore:
                 "mutations": {"concurrency": "expected_version is required for update and delete"},
             }
 
-    def list_records(self, actor_id: str, type_name: str | None = None) -> list[dict[str, Any]]:
+    def list_records(
+        self, actor_id: str, type_name: str | None = None, *, agent: str | None = None,
+    ) -> list[dict[str, Any]]:
         if type_name is not None:
             require_type(self.types, type_name)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
-            return self._viewed(connection, actor_id, "listed", [
+            return self._viewed(connection, actor_id, agent, "listed", [
                 self._public(connection, actor, record) for record in self._all(connection, type_name)
                 if self._can_read(connection, actor, record)
             ])
 
-    def get_record(self, actor_id: str, type_name: str, record_id: str) -> dict[str, Any]:
+    def get_record(
+        self, actor_id: str, type_name: str, record_id: str, *, agent: str | None = None,
+    ) -> dict[str, Any]:
         require_type(self.types, type_name)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             record = self._get_authorized(connection, actor, type_name, record_id)
-            return self._viewed(connection, actor_id, "read", [self._public(connection, actor, record)])[0]
+            return self._viewed(connection, actor_id, agent, "read", [self._public(connection, actor, record)])[0]
 
     def _viewed(
-        self, connection: sqlite3.Connection, actor_id: str, how: str, records: list[dict[str, Any]],
+        self, connection: sqlite3.Connection, actor_id: str, agent: str | None, how: str,
+        records: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Record that the actor was shown these records. Commits with the read."""
         now = _now()
         latest = connection.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()[0]
         connection.executemany(
-            "INSERT INTO views (type, record_id, at, actor, how, after_event) VALUES (?, ?, ?, ?, ?, ?)",
-            [(record["type"], record["id"], now, actor_id, how, latest) for record in records],
+            "INSERT INTO views (type, record_id, at, actor, how, after_event, agent) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [(record["type"], record["id"], now, actor_id, how, latest, _agent(agent)) for record in records],
         )
         return records
 
@@ -404,12 +421,13 @@ class WorldStore:
 
     def query(
         self, actor_id: str, type_name: str, filters: list[dict[str, Any]] | None = None,
+        *, agent: str | None = None,
     ) -> list[dict[str, Any]]:
         require_type(self.types, type_name)
         filters = self._filters(type_name, [] if filters is None else filters)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
-            return self._viewed(connection, actor_id, "found by a query", [
+            return self._viewed(connection, actor_id, agent, "found by a query", [
                 self._public(connection, actor, record) for record in self._all(connection, type_name)
                 if self._can_read(connection, actor, record) and all(self._matches(record, item) for item in filters)
             ])
@@ -446,7 +464,7 @@ class WorldStore:
     ) -> dict[str, Any]:
         if provenance is None:
             provenance = {}
-        if not isinstance(provenance, dict) or set(provenance) - {"requested_by", "reason", "evidence"}:
+        if not isinstance(provenance, dict) or set(provenance) - {"requested_by", "reason", "evidence", "agent"}:
             raise WorldError(422, "invalid_provenance", "Provenance accepts requested_by, reason, and evidence. The actor comes from authentication.")
         requester = provenance.get("requested_by", actor_id)
         if not isinstance(requester, str) or not requester or self._raw(connection, self.definition.actor_type, requester) is None:
@@ -461,7 +479,8 @@ class WorldStore:
             raise WorldError(422, "invalid_provenance", "evidence must contain JSON values.") from error
         if len(serialized) > 65536:
             raise WorldError(422, "invalid_provenance", "evidence is too large.")
-        return {"requested_by": requester, "reason": reason, "evidence": json.loads(serialized)}
+        return {"requested_by": requester, "reason": reason, "evidence": json.loads(serialized),
+                "agent": _agent(provenance.get("agent"))}
 
     def _insert(
         self, connection: sqlite3.Connection, type_name: str, record_id: str,
@@ -479,12 +498,12 @@ class WorldStore:
         after: dict[str, Any],
     ) -> None:
         connection.execute(
-            "INSERT INTO events (type, record_id, action, at, actor, requested_by, reason, evidence, before_state, after_state) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO events (type, record_id, action, at, actor, requested_by, reason, evidence, before_state, after_state, agent) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 after["type"], after["id"], action, after["updated_at"], actor_id,
                 provenance["requested_by"], provenance["reason"], _json(provenance["evidence"]),
-                _json(before) if before is not None else None, _json(after),
+                _json(before) if before is not None else None, _json(after), provenance["agent"],
             ),
         )
 
@@ -576,16 +595,18 @@ class WorldStore:
             self._audit(connection, "delete", actor_id, provenance, before, after)
             return self._public(connection, actor, after)
 
-    def history(self, actor_id: str, type_name: str, record_id: str) -> list[dict[str, Any]]:
+    def history(
+        self, actor_id: str, type_name: str, record_id: str, *, agent: str | None = None,
+    ) -> list[dict[str, Any]]:
         require_type(self.types, type_name)
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             record = self._get_authorized(connection, actor, type_name, record_id, include_deleted=True)
-            self._viewed(connection, actor_id, "history read", [record])
+            self._viewed(connection, actor_id, agent, "history read", [record])
             return [
                 {
                     "id": row["id"], "type": row["type"], "record_id": row["record_id"],
-                    "action": row["action"], "at": row["at"], "actor": row["actor"],
+                    "action": row["action"], "at": row["at"], "actor": row["actor"], "agent": row["agent"],
                     "requested_by": row["requested_by"], "reason": row["reason"],
                     "evidence": json.loads(row["evidence"]),
                     "before": json.loads(row["before_state"]) if row["before_state"] is not None else None,
@@ -626,6 +647,7 @@ class WorldStore:
         """The latest audit lines for records this actor may read, oldest first.
 
         Each line gives when, who, what they did, the record, and the detail.
+        Who is the actor, followed by "via" and the agent when software acted for them.
         Long values are shortened here; history() returns them in full.
         """
         if type_name is not None:
@@ -638,15 +660,16 @@ class WorldStore:
             if record_id is not None:
                 where, params = where + " AND record_id = ?", (type_name, record_id)
         verbs = {"create": "created", "update": "changed", "delete": "deleted"}
+        who = lambda row: row["actor"] + (f" via {row['agent']}" if row["agent"] else "")
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             if record_id is not None:
                 self._get_authorized(connection, actor, type_name, record_id, include_deleted=True)
             entries = [
-                (row["id"], 0, 0, row["at"], row["actor"], verbs[row["action"]], row["type"], row["record_id"], self._happened(row))
+                (row["id"], 0, 0, row["at"], who(row), verbs[row["action"]], row["type"], row["record_id"], self._happened(row))
                 for row in connection.execute(f"SELECT * FROM events{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ] + [
-                (row["after_event"], 1, row["id"], row["at"], row["actor"], "viewed", row["type"], row["record_id"], row["how"].capitalize() + ".")
+                (row["after_event"], 1, row["id"], row["at"], who(row), "viewed", row["type"], row["record_id"], row["how"].capitalize() + ".")
                 for row in connection.execute(f"SELECT * FROM views{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ]
             readable: dict[tuple[str, str], bool] = {}

@@ -8,6 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import secrets
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -48,13 +49,41 @@ class AccessTokens:
         self.tokens = json.loads(self.path.read_text())
         os.chmod(self.path, 0o600)
 
-    def actor_for(self, token):
+        # Tokens a person has issued to software acting for them: token -> [actor, agent].
+        self.agent_path = Path(data_dir) / "agent-access.json"
+        self.agents = json.loads(self.agent_path.read_text()) if self.agent_path.exists() else {}
+
+    def identify(self, token):
+        """The actor a token signs in, and the agent it was issued to, if any."""
         if not isinstance(token, str) or len(token) > 200 or not token.isascii():
-            return None
+            return None, None
         for actor, credential in self.tokens.items():
             if hmac.compare_digest(token, credential):
-                return actor
-        return None
+                return actor, None
+        for credential, (actor, agent) in self.agents.items():
+            if hmac.compare_digest(token, credential):
+                return actor, agent
+        return None, None
+
+    def actor_for(self, token):
+        return self.identify(token)[0]
+
+    def issue(self, actor, agent):
+        """A token that acts as this actor and is recorded as this agent. Reissuing returns the same token."""
+        if actor not in self.tokens:
+            raise ValueError(f"Unknown actor. Choose one of: {', '.join(self.tokens)}.")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", agent):
+            raise ValueError("An agent name is up to 64 letters, digits, dots, hyphens, or underscores.")
+        for token, issued in self.agents.items():
+            if issued == [actor, agent]:
+                return token
+        token = secrets.token_urlsafe(32)
+        self.agents[token] = [actor, agent]
+        descriptor = os.open(self.agent_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump(self.agents, stream)
+            stream.write("\n")
+        return token
 
 
 class WorldHTTPServer(ThreadingHTTPServer):
@@ -93,6 +122,7 @@ class WorldHandler(BaseHTTPRequestHandler):
         logging.info("%s request finished", self.command)
 
     def _dispatch(self, method):
+        self.agent = None
         try:
             self.connection.settimeout(150)
             split = urlsplit(self.path)
@@ -117,14 +147,15 @@ class WorldHandler(BaseHTTPRequestHandler):
             actor_id = self._actor()
             store = self.server.store
             if path == "/api/session" and method == "GET":
-                return self._respond(200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id)})
+                return self._respond(200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id, agent=self.agent)})
             if path == "/api/world" and method == "GET":
-                return self._respond(200, {**store.describe(actor_id), "operations": OPERATIONS})
+                acting = {"agent": self.agent} if self.agent else {}
+                return self._respond(200, {**store.describe(actor_id), **acting, "operations": OPERATIONS})
             if path == "/api/records" and method == "GET":
                 type_name = parse_qs(split.query).get("type", [None])[0]
-                return self._respond(200, {"records": store.list_records(actor_id, type_name)})
+                return self._respond(200, {"records": store.list_records(actor_id, type_name, agent=self.agent)})
             if path == "/api/query" and method == "POST":
-                return self._respond(200, {"records": store.query(actor_id, body.get("type"), body.get("filters", []))})
+                return self._respond(200, {"records": store.query(actor_id, body.get("type"), body.get("filters", []), agent=self.agent)})
             parts = [unquote(part) for part in path.strip("/").split("/")]
             if len(parts) == 3 and parts[:2] == ["api", "types"] and method == "GET":
                 description = store.describe(actor_id)
@@ -136,7 +167,7 @@ class WorldHandler(BaseHTTPRequestHandler):
                 lines = store.audit(actor_id, *parts[2:], limit=int(limit) if limit.isdecimal() else 0)
                 return self._text(200, "".join(line + "\n" for line in lines))
             if len(parts) == 4 and parts[:2] == ["api", "history"] and method == "GET":
-                return self._respond(200, {"events": store.history(actor_id, parts[2], parts[3])})
+                return self._respond(200, {"events": store.history(actor_id, parts[2], parts[3], agent=self.agent)})
             if len(parts) == 3 and parts[:2] == ["api", "records"] and method == "POST":
                 self._require_object(body, "data")
                 record = store.create(actor_id, parts[2], body.get("data"), self._provenance(actor_id, body))
@@ -144,7 +175,7 @@ class WorldHandler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ["api", "records"]:
                 type_name, record_id = parts[2:]
                 if method == "GET":
-                    return self._respond(200, {"record": store.get_record(actor_id, type_name, record_id)})
+                    return self._respond(200, {"record": store.get_record(actor_id, type_name, record_id, agent=self.agent)})
                 if method == "PATCH":
                     self._require_object(body, "changes")
                     record = store.update(actor_id, type_name, record_id, body.get("changes"),
@@ -154,7 +185,8 @@ class WorldHandler(BaseHTTPRequestHandler):
                     store.delete(actor_id, type_name, record_id, body.get("expected_version"), self._provenance(actor_id, body))
                     return self._respond(200, {"deleted": True, "type": type_name, "id": record_id})
             if path == "/client/intent" and method == "POST":
-                result = self.server.planner.plan(store.describe(actor_id), store.list_records(actor_id),
+                # These records leave the service for a model, so the audit names the gateway.
+                result = self.server.planner.plan(store.describe(actor_id), store.list_records(actor_id, agent=self.agent or "client-gateway"),
                                                  body.get("message"), body.get("context"))
                 return self._respond(200, result)
             if path == "/client/apply" and method == "POST":
@@ -180,7 +212,7 @@ class WorldHandler(BaseHTTPRequestHandler):
                 token = jar["world_session"].value if "world_session" in jar else None
             except cookies.CookieError:
                 token = None
-        actor_id = self.server.access.actor_for(token)
+        actor_id, self.agent = self.server.access.identify(token)
         if not actor_id:
             raise ClientError(401, "authentication_required", "Sign in with a server-issued token to open this world.")
         return actor_id
@@ -221,15 +253,14 @@ class WorldHandler(BaseHTTPRequestHandler):
             error.details = {"expected": OPERATIONS["create" if key == "data" else "update"]}
             raise error
 
-    @staticmethod
-    def _provenance(actor_id, body):
+    def _provenance(self, actor_id, body):
         reason = body.get("reason", "Changed through the World client")
         if not isinstance(reason, str) or len(reason) > 4000:
             raise ClientError(400, "invalid_reason", "A change reason must be text of up to 4,000 characters.")
         evidence = body.get("evidence", [])
         if not isinstance(evidence, list) or len(evidence) > 20 or any(not isinstance(item, str) or len(item) > 2000 for item in evidence):
             raise ClientError(400, "invalid_evidence", "Evidence must be a list of up to 20 short text references.")
-        return {"requested_by": actor_id, "reason": reason, "evidence": evidence}
+        return {"requested_by": actor_id, "reason": reason, "evidence": evidence, "agent": self.agent}
 
     def _apply(self, actor_id, body):
         proposal = body.get("proposal")
@@ -276,7 +307,7 @@ class WorldHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _respond(self, status, value, cookie=None):
-        data = json.dumps(value, ensure_ascii=False, allow_nan=False).encode()
+        data = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
         if self.server.meter:
             self.server.meter(self.command, self.path, status, len(data))
         self.send_response(status)
@@ -304,6 +335,8 @@ def main():
     parser.add_argument("--port", type=int, default=int(os.environ.get("WORLD_PORT", "8787")))
     parser.add_argument("--data-dir", type=Path, help="Defaults to ~/.local/share/world, with a subdirectory for worlds other than team")
     parser.add_argument("--actor", default="ben", help="Actor to sign in as for the access command")
+    parser.add_argument("--agent", help="For the access command: issue a token for software acting as the actor. "
+                        "The audit records its reads and changes as ACTOR via AGENT")
     parser.add_argument("--url", default=os.environ.get("WORLD_URL"), help="Client base URL for the access command")
     args = parser.parse_args()
     definition = worlds.load(args.world)
@@ -317,6 +350,12 @@ def main():
             parser.error(f"Unknown actor. Choose one of: {', '.join(access.tokens)}.")
         saved_url = data_dir / "client-url"
         base = args.url or (saved_url.read_text().strip() if saved_url.is_file() else f"http://localhost:{args.port}")
+        if args.agent:
+            try:
+                print(access.issue(args.actor, args.agent))
+            except ValueError as error:
+                parser.error(str(error))
+            return
         print(base.rstrip("/") + "/#token=" + access.tokens[args.actor])
         return
     try:

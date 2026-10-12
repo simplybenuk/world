@@ -279,5 +279,55 @@ class Meter:
         self.server.server_close()
 
 
+def faults(ids):
+    """The ten mistakes of bench.crm.FAULTS, as a client of EspoCRM would make them.
+
+    Each entry is (id, actor, method, path, body, extra headers, harm). `harm`
+    reads the result as the administrator and returns what went wrong when
+    EspoCRM accepted the request, or None.
+    """
+    admin = Api()
+    harbor, rollout, training, renewal = (f"Opportunity/{ids[name]}" for name in ("harbor-pilot", "alder-rollout", "alder-training", "northwind-renewal"))
+    amount = lambda path, expected: None if round(admin.ok("GET", path)["amount"]) == expected else "the amount did not change"
+    return [
+        ("stale-version", "priya", "PUT", harbor, {"amount": 25000}, {"X-Version-Number": "7"}, lambda body: "an out-of-date write was saved"),
+        ("missing-version", "priya", "PUT", harbor, {"amount": 25000}, {}, lambda body: None),
+        ("wrong-enum", "priya", "PUT", renewal, {"stage": "closed-won"}, {}, lambda body: "an unknown stage was saved"),
+        ("constraint", "tom", "PUT", rollout, {"stage": "Closed Won"}, {}, lambda body: "won with an amount of zero"),
+        ("unknown-field", "priya", "PUT", harbor, {"value": 50000}, {}, lambda body: amount(harbor, 50000)),
+        ("missing-required", "priya", "POST", "Call", {"name": "Spoke to Mei", "status": "Held", "parentType": "Account", "parentId": ids["harbor"]}, {},
+         lambda body: "a call with no date was saved"),
+        ("wrong-reference", "priya", "POST", "Contact", {"firstName": "Jo", "lastName": "Park", "accountId": "harbor-logistics"}, {},
+         lambda body: "the contact was saved with no organization" if not admin.ok("GET", f"Contact/{body['id']}").get("accountName") else None),
+        ("wrong-type", "priya", "POST", "Deal", {"name": "Harbor expansion", "accountId": ids["harbor"]}, {}, lambda body: "a record of an unknown type was saved"),
+        ("wrong-filter", "priya", "GET", "Opportunity?where[0][type]=equals&where[0][field]=stage&where[0][value]=Proposal", None, {},
+         lambda body: None if body["total"] == 1 else f"{body['total']} records came back where 1 matches"),
+        ("denied", "tom", "PUT", training, {"amount": 9500}, {}, lambda body: "a closed opportunity was changed"),
+    ]
+
+
+def measure_faults(users):
+    rows = []
+    mistakes = {fault.id: fault.mistake for fault in crm.FAULTS}
+    for index in range(len(crm.FAULTS)):
+        ids = reset(users)
+        identifier, actor, method, path, body, extra, harm = faults(ids)[index]
+        connection = HTTPConnection(HOST, PORT, timeout=60)
+        try:
+            headers = {"X-Api-Key": users[actor]["key"], **extra, **({"Content-Type": "application/json"} if body is not None else {})}
+            connection.request(method, "/api/v1/" + path, None if body is None else json.dumps(body), headers)
+            response = connection.getresponse()
+            raw = response.read().decode(errors="replace")
+            reason = response.getheader("X-Status-Reason") or ""
+        finally:
+            connection.close()
+        accepted = response.status < 300
+        rows.append({
+            "fault": identifier, "mistake": mistakes[identifier], "status": response.status, "reason": reason, "body": raw[:400],
+            "harm": harm(json.loads(raw)) if accepted else None,
+        })
+    return rows
+
+
 def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")

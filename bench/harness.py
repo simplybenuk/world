@@ -50,6 +50,10 @@ class Running:
     def client(self, actor):
         return Client(self.server.server_port, self.access.tokens[actor])
 
+    def agent_token(self, actor, agent):
+        """A token whose reads and changes the audit records as the actor via this agent."""
+        return self.access.issue(actor, agent)
+
     def usage(self):
         return {
             "calls": len(self.requests),

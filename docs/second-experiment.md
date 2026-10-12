@@ -184,7 +184,7 @@ you would carry, not as a like-for-like count of application bytes.
 
 ### Self-description
 
-World describes itself in 7.3 KB. EspoCRM's equivalent, `GET /api/v1/Metadata`,
+World describes itself in 6.8 KB. EspoCRM's equivalent, `GET /api/v1/Metadata`,
 is 248 KB for a rep, roughly 62,000 tokens. An agent that already knows
 EspoCRM's API from training does not need it. An agent that does not has no
 smaller place to look.
@@ -205,7 +205,38 @@ World makes one more call per task because its script reads the description
 first. EspoCRM's script skips discovery. Its times include a local counting
 proxy, which adds a few milliseconds.
 
-Recovery from rejected requests is not measured for the control yet.
+### The same ten mistakes
+
+World rejects all ten and gives enough to correct eight in one call. EspoCRM
+rejects six. It names the field in its validation errors but not the allowed
+values, and it puts the explanation in an `X-Status-Reason` header.
+
+| Mistake | World | EspoCRM |
+| --- | --- | --- |
+| Update with an out-of-date version | 409, gives the current version | 409, gives the current values |
+| Update without a version | 428, gives the current version | Saved. The last write wins |
+| Stage written as closed-won | 422, lists the stages | 400, names the field |
+| Won without an amount or close date | 422, names the fields | Saved as won with an amount of zero |
+| Amount written as value | 422, lists the fields | 200, and the amount did not change |
+| Interaction without its date | 422, gives the field's definition | 400, names the field |
+| Organization given by a guessed ID | 403, no detail | 403, says the record does not exist |
+| Opportunity called Deal | 400, lists the types | 404, says the type does not exist |
+| Filter key written as operator | 400, lists the keys | Accepted. It reads the other key name too |
+| Change to a closed opportunity | 403, gives the rule | 403, gives the rule's message |
+
+Two of EspoCRM's four acceptances leave a wrong result with a success status.
+The unknown field is the one an agent is least likely to notice. The won
+opportunity at zero is a rule EspoCRM does not have, not a fault in it. EspoCRM
+explains the guessed ID better than World does.
+
+## Changes since the first measurements
+
+- Responses are compact JSON. The description fell from 7.3 KB to 6.8 KB with
+  no change in content. The agent figures above were measured before this.
+- A person can issue a token to an agent with
+  `python3 -m world.server access --actor priya --agent codex`. The audit then
+  records that token's reads and changes as `priya via codex`. The agent runner
+  uses such a token and saves each run's audit lines with its results.
 
 ## Open questions
 
@@ -221,8 +252,9 @@ Recovery from rejected requests is not measured for the control yet.
 1. Run the agent against both sides, three times per task, with the commands in
    "The control" above. The control is installed and its scripted figures are
    in. Only the agent run is missing.
-2. Reduce the description. Candidates are sending only the types a request
-   names, shortening field definitions, and replacing rule text with rules the
-   engine evaluates.
+2. Reduce the description further. Rule text is 23% of it and field
+   definitions 38%. Splitting it across calls would save bytes and cost a round
+   trip, and a round trip costs an agent more. Any cut that changes content
+   needs an agent run to show the success rate holds.
 3. Repeat each agent task several times, and with a second agent, so the
    success rate means something.

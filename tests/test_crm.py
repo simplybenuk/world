@@ -199,6 +199,48 @@ class CRMTest(unittest.TestCase):
                 with self.assertRaisesRegex(sqlite3.DatabaseError, "append-only"):
                     connection.execute(statement)
 
+    def test_the_audit_names_the_agent_that_acted_for_a_person(self):
+        self.store.get_record("priya", "Opportunity", "harbor-pilot", agent="codex")
+        self.store.update("priya", "Opportunity", "harbor-pilot", {"amount": 23000}, 1, {"reason": "Requote.", "agent": "codex"})
+        self.store.get_record("priya", "Opportunity", "harbor-pilot")
+        who = [line.split("  ")[1] for line in self.store.audit("priya", "Opportunity", "harbor-pilot")]
+        self.assertEqual(who, ["system", "priya via codex", "priya via codex", "priya"])
+        self.assertEqual(self.store.history("ben", "Opportunity", "harbor-pilot")[-1]["agent"], "codex")
+        self.assert_error(422, lambda: self.store.get_record("priya", "Person", "priya", agent="ben  deleted"), "invalid_agent")
+        self.assert_error(422, lambda: self.store.update("priya", "Opportunity", "harbor-pilot", {"amount": 1}, 2, {"agent": "a b"}), "invalid_agent")
+
+    def test_a_database_from_before_agents_were_named_still_opens(self):
+        self.store.get_record("ben", "Person", "ben")
+        self.store.close()
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute("ALTER TABLE events DROP COLUMN agent")
+            connection.execute("ALTER TABLE views DROP COLUMN agent")
+            connection.commit()
+        reopened = WorldStore(self.path, worlds.load("crm"))
+        reopened.get_record("ben", "Person", "ben", agent="codex")
+        self.assertEqual([line.split("  ")[1] for line in reopened.audit("ben", "Person", "ben")], ["system", "ben", "ben via codex"])
+
+    def test_an_agent_token_acts_as_its_person_and_is_named_over_http(self):
+        from bench.harness import Client, running
+        with running() as world:
+            token = world.agent_token("priya", "codex")
+            self.assertEqual(world.agent_token("priya", "codex"), token)
+            self.assertNotEqual(world.agent_token("tom", "codex"), token)
+            agent = Client(world.server.server_port, token)
+            description = agent.get("/api/world")
+            self.assertEqual((description["actor"]["id"], description["agent"]), ("priya", "codex"))
+            self.assertNotIn("agent", world.client("priya").get("/api/world"))
+            status, _ = agent.call("PATCH", "/api/records/Opportunity/harbor-pilot",
+                                   {"changes": {"amount": 23000}, "expected_version": 1, "reason": "Requote.", "agent": "someone-else"})
+            self.assertEqual(status, 200)
+            self.assertEqual(agent.call("GET", "/api/records/Opportunity/alder-rollout")[0], 403)
+            lines = world.store.audit("ben", "Opportunity", "harbor-pilot")
+            self.assertIn("  priya via codex  changed  Opportunity harbor-pilot  ", lines[-1])
+            with self.assertRaises(ValueError):
+                world.access.issue("priya", "not a name")
+            with self.assertRaises(ValueError):
+                world.access.issue("nobody", "codex")
+
 
 if __name__ == "__main__":
     unittest.main()

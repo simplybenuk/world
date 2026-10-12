@@ -147,6 +147,7 @@ def control(args):
         tasks.append({"task": task.id, **meter.usage(), "milliseconds": round(seconds * 1000, 1),
                       "failures": espocrm.checks(ids, started_at)[task.id](answer)})
         meter.close()
+    mistakes = espocrm.measure_faults(users)
     print(f"## Control size: EspoCRM {version}\n")
     print(table(["Part", "Bytes"], [(name, f"{value:,}") for name, value in size.items()]))
     print("\nIdle memory: " + ", ".join(f"{name} {used}" for name, used in sorted(memory.items())))
@@ -158,7 +159,14 @@ def control(args):
     print("\n## Control round trips per task, scripted shortest path, no discovery call\n")
     print(table(["Task", "Calls", "Bytes read", "Milliseconds", "Outcome"], [
         (row["task"], row["calls"], f"{row['bytes_read']:,}", row["milliseconds"], "; ".join(row["failures"]) or "correct") for row in tasks]))
-    save("control.json", {"version": version, "size": size, "memory": memory, "world": world_side, "discovery": discovery, "tasks": tasks})
+    print("\n## Control response to the same mistakes\n")
+    print(table(["Mistake", "Response", "What it said", "Result"], [
+        (row["mistake"], row["status"], row["reason"] or "nothing", "rejected" if row["status"] >= 300 else row["harm"] or "accepted")
+        for row in mistakes]))
+    print(f"\n{sum(row['status'] >= 300 for row in mistakes)} of {len(mistakes)} rejected, "
+          f"{sum(bool(row['harm']) for row in mistakes)} accepted with a wrong result.")
+    save("control.json", {"version": version, "size": size, "memory": memory, "world": world_side, "discovery": discovery,
+                          "tasks": tasks, "mistakes": mistakes})
 
 
 def measure_recovery():
@@ -249,13 +257,13 @@ Finish with a short plain-text answer: what you found or changed, or why you cou
 
 
 @contextmanager
-def world_target(task):
+def world_target(task, label):
     """A fresh World for one task: its prompt, its meter, and its checker."""
     with running() as world:
         def finish(answer):
             changed = [(row["type"], row["id"]) for row in changed_records(world.store)]
             return task.check(world.store, answer), all(crm._reason_given(world.store, *record) for record in changed)
-        yield PROMPT.format(url=world.url, token=world.access.tokens[task.actor], task=task.prompt), world, finish
+        yield PROMPT.format(url=world.url, token=world.agent_token(task.actor, label), task=task.prompt), world, finish
 
 
 @contextmanager
@@ -280,7 +288,7 @@ def agent(args):
     rows = []
     for run in range(1, args.repeat + 1):
         for task in tasks:
-            target = control_target(task, users) if args.control else world_target(task)
+            target = control_target(task, users) if args.control else world_target(task, args.label)
             with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
                 answer_file = Path(workspace) / "answer.txt"
                 command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
@@ -300,6 +308,7 @@ def agent(args):
                 rows.append({
                     "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
                     "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
+                    "audit": [] if args.control else [line for line in meter.store.audit("ben", limit=10000) if "  system  " not in line],
                 })
                 print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
                       f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)

@@ -200,6 +200,17 @@ rows cannot be updated or deleted. Values longer than 120 characters are
 shortened in the audit and kept in full in the history. Reading the audit does
 not add a line.
 
+Software acting for a person should use its own token. This prints one:
+
+```sh
+python3 -m world.server access --actor ben --agent codex
+```
+
+The token has Ben's permissions. The audit records what it reads and changes as
+`ben via codex`, and history events carry the name in `agent`. The name comes
+from the token, so a request cannot claim a different one. Records that the
+client gateway sends to a model appear as `via client-gateway`.
+
 Errors return an `error` object with a `code` and `message`. Malformed input
 returns 400, missing authentication 401, denied access 403, and a missing record
 404. Invalid fields or relationships return 422. Missing or invalid mutation

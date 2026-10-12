@@ -20,6 +20,10 @@ Ben, 2026-10-09. Weigh every proposal against these two aims.
 
 Views count. A read that leaves no audit line is a defect.
 
+The audit names software as well as people. A person issues a token to an agent,
+and the audit records its reads and changes as `person via agent`. Give every
+agent its own token. Do not let one work with a person's own token.
+
 ### World is the system of record, and provides no LLM
 
 Ben, 2026-10-08. World holds records, rules, and history in the simplest and
