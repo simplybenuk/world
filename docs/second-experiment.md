@@ -64,8 +64,9 @@ own pipeline and gets a disabled owner field in the edit form.
 
 ## What it shows about a World format
 
-Rules are written twice. Each type carries its rules as text for a client to
-read, and the definition enforces them in Python. Nothing checks that the two
+Rules were written twice. This is now fixed. See [Write a world](writing-a-world.md).
+Each type carried its rules as text for a client to
+read, and the definition enforced them in Python. Nothing checks that the two
 agree. The CRM states 34 rules and constraints as text and has about 150
 lines of code behind them.
 

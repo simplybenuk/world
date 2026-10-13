@@ -69,7 +69,8 @@ fits on a USB key.
 - On the CRM, which the agent already knew, World and EspoCRM were level on
   success, calls, and time (2026-10-12). On a made-up calibration lab, both got
   every task right and World used half the calls and 58% of the time
-  (2026-10-13). World's advantage is in domains an agent has not seen, in size,
+  (2026-10-13). Claude Code gave the same result on the lab: half the calls, 71%
+  of the time. World's advantage is in domains an agent has not seen, in size,
   and in refusing wrong requests. See `docs/third-experiment.md`.
 - Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
@@ -93,7 +94,9 @@ measurement shows it is the limit.
 - `world/` is the engine: storage, validation, versions, history, and the HTTP
   protocol. It must not name a type, role, or rule from any one domain.
 - `worlds/` holds one definition per domain: `team` (the default), `crm`, and
-  `lab`. `python3 -m bench --domain lab` selects the lab's tasks.
+  `lab`. A definition is data. Rules are expressions the engine evaluates and
+  shows to clients, so never enforce a rule in Python. Extend the language in
+  `world/rules.py` if a rule cannot be written. See `docs/writing-a-world.md`. `python3 -m bench --domain lab` selects the lab's tasks.
 - `bench/` measures discovery cost, round trips, and recovery. Run
   `python3 -m bench` after any protocol change and compare with the figures in
   `docs/second-experiment.md`. `python3 -m bench agent` spends the user's model

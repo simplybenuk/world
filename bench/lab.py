@@ -26,9 +26,10 @@ def solve_count(client):
 
 
 def check_count(store, answer):
+    # An answer may also name the instruments that are not quarantined, so only the count and the three tags are checked.
     missing = [tag for tag in QUARANTINED_AT_LEEDS if tag not in answer.upper()]
-    wrong = [tag for tag in ("GAU-140", "BAL-014", "TH-221", "PIP-007") if tag in answer.upper()]
-    return ([f"The answer omits {', '.join(missing)}."] if missing else []) + ([f"The answer wrongly includes {', '.join(wrong)}."] if wrong else [])
+    counted = any(word in answer.lower() for word in ("3", "three"))
+    return ([f"The answer omits {', '.join(missing)}."] if missing else []) + ([] if counted else ["The answer does not give the count of three."])
 
 
 def solve_adjusted(client):

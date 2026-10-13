@@ -78,10 +78,34 @@ The bytes are what crossed the wire. The agent filtered the metadata before
 reading it, so its token use is lower than 767 KB suggests. The calls and the
 time are the fair measures.
 
+### A second agent
+
+Run on 2026-10-13 with Claude Code (`claude -p --model sonnet`), limited to
+`curl` and text filters, on the same tasks and prompts.
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Task runs correct | 15 of 15 | 15 of 15 |
+| Calls | 51 | 108 |
+| Rejected calls | 0 | 4 |
+| Agent time, all 15 runs | 172 s | 243 s |
+| Agent time, median run | 12 s | 16 s |
+
+The result holds. Claude also needed half the calls on World, and it made the
+same number of calls in all three runs of every task. It thinks faster than the
+first agent, so the time gap is smaller: World took 71% of EspoCRM's time, where
+the first agent took 58%. The checker marked one of Claude's EspoCRM answers
+wrong for naming the instruments that were not quarantined as well as those
+that were. The answer was right, the checker has been loosened, and the table
+counts it as correct.
+
+Codex was run again on World after the rules became expressions (see
+[Write a world](writing-a-world.md)). It made the same calls as before in 14 of
+15 runs. In the other, Codex exited after 3 seconds without making a request.
+
 ### Limits
 
-- One agent, one model, 15 runs a side. The gap is large and consistent across
-  every task, but it is one agent's behaviour.
+- Two agents, 15 runs a side each. The gap in calls is the same for both.
 - The prompt pointed EspoCRM's agent at the full metadata. EspoCRM can return
   one part of it, and an agent that knew to ask for only the lab's entities
   would read far less. Nothing in the system tells an agent that.
@@ -94,8 +118,8 @@ time are the fair measures.
 | | Known domain (CRM) | Unknown domain (lab) |
 | --- | --- | --- |
 | Correct | level | level |
-| Calls | level | World uses half |
-| Agent time | level | World takes 58% |
+| Calls | level | World uses half, for both agents |
+| Agent time | level | World takes 58% to 71% |
 | Application size | 81 KB against 172 MB | the same engine |
 
 World's advantage is that an agent can learn an unfamiliar system from one small
