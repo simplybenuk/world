@@ -15,8 +15,10 @@ def _query(client, type_name, **equals):
     return body["records"]
 
 
-def _created(store, type_name):
-    return [record for record in store.list_records("ada", type_name) if record["id"] not in SEEDED[type_name]]
+def _created(store, type_name, instrument):
+    """Records of this type for one instrument that were not there at the start."""
+    found = store.find("ada", type_name, where=f"record.instrument == '{instrument}'", limit=1000)["records"]
+    return [record for record in found if record["id"] not in SEEDED[type_name]]
 
 
 def solve_count(client):
@@ -42,7 +44,7 @@ def solve_adjusted(client):
 
 
 def check_adjusted(store, answer):
-    found = [record["data"] for record in _created(store, "Calibration") if record["data"]["instrument"] == "bal-014"]
+    found = [record["data"] for record in _created(store, "Calibration", "bal-014")]
     if len(found) != 1:
         return [f"Expected one new calibration of BAL-014, found {len(found)}."]
     return [] if found[0]["result"] == "adjusted" and found[0]["drift_ppm"] == 180 else ["The calibration is not adjusted with 180 ppm drift."]
@@ -63,10 +65,10 @@ def solve_failed(client):
 
 def check_failed(store, answer):
     failures = []
-    calibrations = [record["data"] for record in _created(store, "Calibration") if record["data"]["instrument"] == "th-221"]
+    calibrations = [record["data"] for record in _created(store, "Calibration", "th-221")]
     if not any(data["result"] == "fail" and data["drift_ppm"] == 950 for data in calibrations):
         failures.append("No failed calibration of TH-221 with 950 ppm drift.")
-    deviations = [record["data"] for record in _created(store, "Deviation") if record["data"]["instrument"] == "th-221"]
+    deviations = [record["data"] for record in _created(store, "Deviation", "th-221")]
     if not any(data["severity"] == "major" and data["disposition"] == "open" for data in deviations):
         failures.append("No open major deviation for TH-221.")
     if store.get_record("ada", "Instrument", "th-221")["data"]["state"] != "quarantined":

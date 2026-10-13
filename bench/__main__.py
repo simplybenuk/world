@@ -18,12 +18,12 @@ import sys
 import tempfile
 import time
 
-from . import crm, lab
+from . import crm, enterprise, lab
 from .harness import running
 from world.store import WorldStore
 import worlds
 
-DOMAINS = {"crm": crm, "lab": lab}
+DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise}
 CONTROLS = {"crm": "espocrm", "lab": "lab"}
 domain = crm  # set from --domain
 
@@ -272,10 +272,9 @@ Finish with a short plain-text answer: what you found or changed, or why you cou
 @contextmanager
 def world_target(task, label):
     """A fresh World for one task: its prompt, its meter, and its checker."""
-    with running(domain.WORLD) as world:
+    with running(domain.WORLD, getattr(domain, "SOURCE", None)) as world:
         def finish(answer):
-            changed = [(row["type"], row["id"]) for row in changed_records(world.store)]
-            return task.check(world.store, answer), all(reason_given(world.store, *record) for record in changed)
+            return task.check(world.store, answer), not any(DEFAULT_REASON in line for line in recent_audit(world.store))
         yield PROMPT.format(url=world.url, token=world.agent_token(task.actor, label), task=task.prompt), world, finish
 
 
@@ -320,7 +319,7 @@ def agent(args):
                 rows.append({
                     "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
                     "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
-                    "audit": [] if args.control else [line for line in meter.store.audit(admin(), limit=10000) if "  system  " not in line],
+                    "audit": [] if args.control else recent_audit(meter.store),
                 })
                 print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
                       f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
@@ -334,15 +333,12 @@ def agent(args):
     save(f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json", rows)
 
 
-def reason_given(store, type_name, record_id):
-    """Whether the last change carries the agent's own reason, not the server's default."""
-    return store.history(admin(), type_name, record_id)[-1]["reason"] != "Changed through the World client"
+DEFAULT_REASON = "Reason: Changed through the World client"
 
 
-def changed_records(store):
-    """Records an actor other than the seed has written."""
-    return [record for record in store.list_records(admin())
-            if any(event["actor"] != "system" for event in store.history(admin(), record["type"], record["id"]))]
+def recent_audit(store):
+    """The latest audit lines that the seed and the checkers did not write."""
+    return [line for line in store.audit(admin(), limit=300) if f"  {admin()}  " not in line and "  system  " not in line]
 
 
 def main():

@@ -39,8 +39,12 @@ Ben, 2026-10-13. After the third experiment, work in this order:
 2. Run the comparisons with a second agent, to see whether the result belongs to
    World or to one model.
 3. Let an agent do more in one call.
-4. Test at enterprise size. This may need real infrastructure for World and for
-   any control, so plan it with Ben before building.
+4. Test at enterprise size. Agreed 2026-10-13: the target is about 200 types, a
+   million records, and 50 agents at once. Do it locally in three stages: index
+   the engine, build a world of that size, then test many agents at once.
+   Bringing the control to the same size is a fourth stage that needs Ben's
+   decision on where it runs. The three local stages are done. See
+   `docs/fourth-experiment.md`.
 
 ### World is the system of record, and provides no LLM
 
@@ -93,10 +97,13 @@ measurement shows it is the limit.
 
 - `world/` is the engine: storage, validation, versions, history, and the HTTP
   protocol. It must not name a type, role, or rule from any one domain.
-- `worlds/` holds one definition per domain: `team` (the default), `crm`, and
-  `lab`. A definition is data. Rules are expressions the engine evaluates and
+- `worlds/` holds one definition per domain: `team` (the default), `crm`,
+  `lab`, and `enterprise` (the lab plus 197 generated types, for scale tests). A definition is data. Rules are expressions the engine evaluates and
   shows to clients, so never enforce a rule in Python. Extend the language in
   `world/rules.py` if a rule cannot be written. See `docs/writing-a-world.md`. `python3 -m bench --domain lab` selects the lab's tasks.
+- `python3 -m bench.scale` builds and times the million-record world in
+  `artifacts/bench/scale`. It measures on a copy. Never write to the built
+  database, because the agent tasks start from it.
 - `bench/agents/` holds the commands for agents other than the default Codex.
 - `bench/` measures discovery cost, round trips, and recovery. Run
   `python3 -m bench` after any protocol change and compare with the figures in

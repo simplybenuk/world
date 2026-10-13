@@ -168,5 +168,8 @@ You do not write these. The engine works them out from the rules for each actor.
   today. The types and rules in it are plain data and would fit in a JSON file.
 - A rule that refuses a request returns the rule's text, not which part of it
   failed.
-- Re-checking dependent records reads every record on each update. That is
-  fine for hundreds of records and will need an index for millions.
+- Type and field names use letters, digits, and underscores, and start with a
+  letter.
+- A text field of up to 300 characters, and every enum, date, integer, and
+  reference, is indexed for exact matches. Searching part of a text reads every
+  record of the type.

@@ -84,8 +84,10 @@ class World:
 
     def __init__(
         self, types: dict[str, Any], lookup: Callable[[str, str], dict[str, Any] | None],
-        live: Callable[[str], list[dict[str, Any]]],
+        live: Callable[..., list[dict[str, Any]]],
     ) -> None:
+        # live(type, terms) returns that type's live records. It may use the terms, as
+        # produced by Evaluation.narrowing, to leave out records that cannot match.
         self.types, self.lookup, self.live = types, lookup, live
 
     def node(self, record: dict[str, Any] | None) -> Node | None:
@@ -197,6 +199,37 @@ class Evaluation:
             return result
         return self._call(node, names)
 
+    def narrowing(self, conditions: list[ast.AST], variable: str, names: dict[str, Any]) -> list[tuple[tuple[str, ...], str, Any]]:
+        """Terms every match must satisfy, as (field path, "eq" or "in", value).
+
+        Taken from the conditions that are joined by `and` and compare a path on
+        `variable` with something that does not depend on it. Storage can use
+        them to find candidates through an index. Every candidate is still
+        judged by the full conditions, so leaving a term out is always safe.
+        """
+        pending, terms = list(conditions), []
+        while pending:
+            node = pending.pop()
+            if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
+                pending.extend(node.values)
+                continue
+            if not isinstance(node, ast.Compare) or len(node.ops) != 1 or not isinstance(node.ops[0], (ast.Eq, ast.In)):
+                continue
+            left, right = node.left, node.comparators[0]
+            if isinstance(node.ops[0], ast.Eq) and _path(left, variable) is None:
+                left, right = right, left
+            path = _path(left, variable)
+            if path is None or len(path) > 2 or _mentions(right, variable):
+                continue
+            value = self._value(right, names)
+            if isinstance(node.ops[0], ast.In):
+                if not isinstance(value, list) or any(item is UNKNOWN for item in value):
+                    continue
+                terms.append((path, "in", [item.id if isinstance(item, Node) else item for item in value]))
+            elif value is not UNKNOWN and not isinstance(value, list):
+                terms.append((path, "eq", value.id if isinstance(value, Node) else value))
+        return terms
+
     def _all_or_any(self, node: ast.BoolOp, names: dict[str, Any]) -> Any:
         # Kleene logic: a known False decides `and`, a known True decides `or`.
         decides = isinstance(node.op, ast.Or)
@@ -253,7 +286,9 @@ class Evaluation:
             return target is not None and self.can_read is not None and self.can_read(target)
         loop = argument.generators[0]
         total, unknown = 0, False
-        for record in self.world.live(loop.iter.id):
+        for record in self.world.live(loop.iter.id, self.narrowing(loop.ifs, loop.target.id, names)):
+            if total and name == "any":
+                break
             inner = {**names, loop.target.id: self.world.node(record)}
             conditions = [self._value(condition, inner) for condition in loop.ifs]
             if any(condition is not UNKNOWN and not condition for condition in conditions):
@@ -266,6 +301,19 @@ class Evaluation:
         if name == "count":
             return UNKNOWN if unknown else total
         return True if total else (UNKNOWN if unknown else False)
+
+
+def _mentions(node: ast.AST, variable: str) -> bool:
+    return any(isinstance(inner, ast.Name) and inner.id == variable for inner in ast.walk(node))
+
+
+def _path(node: ast.AST, variable: str) -> tuple[str, ...] | None:
+    """The fields of `variable.a.b`, or None when the node is not such a path."""
+    fields: list[str] = []
+    while isinstance(node, ast.Attribute):
+        fields.append(node.attr)
+        node = node.value
+    return tuple(reversed(fields)) if fields and isinstance(node, ast.Name) and node.id == variable else None
 
 
 def holds(evaluation: Evaluation, expression: str) -> bool:

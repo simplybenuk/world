@@ -24,11 +24,12 @@ DEFAULT_DATA_DIR = Path(os.environ.get("WORLD_DATA_DIR", "~/.local/share/world")
 # How to reach the record operations over HTTP. Part of the world's description,
 # so that a client with nothing but a URL and a token does not have to guess.
 OPERATIONS = {
-    "list": "GET /api/records?type=TYPE",
+    "list": "GET /api/records?type=TYPE, at most 100; when more is true, add &after=NEXT",
     "query": 'POST /api/query {"type": TYPE, "where": EXPRESSION, "include": [REFERENCE_FIELD]}. EXPRESSION is in the language of the rules, '
              "over record and actor, and may follow references: record.instrument.tag == 'X' and record.state != 'done'. "
              "'harbor' in record.name matches part of a text, ignoring case. "
-             "Records named by include come back under included",
+             "Records named by include come back under included. At most 100 records come back, or limit up to 1000. "
+             'When more is true, send next as "after" for the rest. "count": true returns only how many match',
     "get": "GET /api/records/TYPE/ID",
     "create": 'POST /api/records/TYPE {"data": {FIELD: VALUE}, "reason": WHY}',
     "update": 'PATCH /api/records/TYPE/ID {"changes": {FIELD: VALUE}, "expected_version": VERSION, "reason": WHY}',
@@ -95,6 +96,7 @@ class AccessTokens:
 class WorldHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    request_queue_size = 256  # the default of 5 resets connections when many clients arrive at once
 
     def __init__(self, address, store, access, planner=None, meter=None):
         self.store = store
@@ -156,22 +158,32 @@ class WorldHandler(BaseHTTPRequestHandler):
                 return self._respond(200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id, agent=self.agent)})
             if path == "/api/world" and method == "GET":
                 acting = {"agent": self.agent} if self.agent else {}
-                return self._respond(200, {**store.describe(actor_id), **acting, "operations": OPERATIONS})
+                named = parse_qs(split.query).get("types", [None])[0]
+                description = store.describe(actor_id, named.split(",") if named else None)
+                if "type_index" in description:
+                    acting["types"] = ("type_index lists every type. GET /api/world?types=A,B gives the fields, rules, "
+                                       "and what you may do for the types you name.")
+                return self._respond(200, {**description, **acting, "operations": OPERATIONS})
             if path == "/api/records" and method == "GET":
-                type_name = parse_qs(split.query).get("type", [None])[0]
-                return self._respond(200, {"records": store.list_records(actor_id, type_name, agent=self.agent)})
+                query = parse_qs(split.query)
+                type_name, limit = query.get("type", [None])[0], query.get("limit", ["100"])[0]
+                if type_name is None:
+                    return self._respond(200, {"records": store.list_records(actor_id, agent=self.agent)})
+                found = store.find(actor_id, type_name, limit=int(limit) if limit.isdecimal() else 0,
+                                   after=query.get("after", [None])[0], agent=self.agent)
+                return self._respond(200, self._page(found, None))
             if path == "/api/query" and method == "POST":
                 found = store.find(actor_id, body.get("type"), where=body.get("where"), filters=body.get("filters", []),
-                                   include=body.get("include"), agent=self.agent)
-                return self._respond(200, found if body.get("include") else {"records": found["records"]})
+                                   include=body.get("include"), limit=body.get("limit", 100), after=body.get("after"),
+                                   count=body.get("count") is True, agent=self.agent)
+                return self._respond(200, self._page(found, body.get("include")))
             if path == "/api/changes" and method == "POST":
                 return self._respond(200, {"records": store.apply(actor_id, body.get("steps"), self._provenance(actor_id, body))})
             parts = [unquote(part) for part in path.strip("/").split("/")]
             if len(parts) == 3 and parts[:2] == ["api", "types"] and method == "GET":
-                description = store.describe(actor_id)
-                if parts[2] not in description["types"]:
+                if parts[2] not in store.types:
                     raise ClientError(404, "unknown_type", "This record type does not exist.")
-                return self._respond(200, {"name": parts[2], **description["types"][parts[2]]})
+                return self._respond(200, {"name": parts[2], **store.describe(actor_id, [parts[2]])["types"][parts[2]]})
             if parts[:2] == ["api", "audit"] and len(parts) in (2, 4) and method == "GET":
                 limit = parse_qs(split.query).get("limit", ["500"])[0]
                 lines = store.audit(actor_id, *parts[2:], limit=int(limit) if limit.isdecimal() else 0)
@@ -258,6 +270,18 @@ class WorldHandler(BaseHTTPRequestHandler):
         if not isinstance(value, dict):
             raise ClientError(400, "invalid_request", "The request must be a JSON object.")
         return value
+
+    @staticmethod
+    def _page(found, include):
+        """A query's answer, without the keys that say nothing."""
+        if "count" in found:
+            return found
+        page = {"records": found["records"]}
+        if include:
+            page["included"] = found["included"]
+        if found["more"]:
+            page.update({"more": True, "next": found["next"]})
+        return page
 
     @staticmethod
     def _require_object(body, key):

@@ -160,9 +160,10 @@ bodies must be JSON objects with `Content-Type: application/json`.
 | `POST /api/session` | Sign in with `{"token":"TOKEN"}` and receive a session cookie |
 | `GET /api/session` | Authenticated actor record |
 | `DELETE /api/session` | Clear the browser session cookie |
-| `GET /api/world` | Actor, types, fields, rules, capabilities, query operators, and the operations in this table |
+| `GET /api/world` | Actor, types, fields, rules, capabilities, query operators, and the operations in this table. A world with more than 12 types returns `type_index`, the names and descriptions only |
+| `GET /api/world?types=Task,Project` | The same, in full, for the types named |
 | `GET /api/types/Task` | Description of one type |
-| `GET /api/records?type=Task` | Visible records of one type; omit `type` for all visible records |
+| `GET /api/records?type=Task` | Visible records of one type, at most 100. When `more` is true, add `&after=` with the `next` value. Omit `type` for all visible records of a small world |
 | `POST /api/query` | `{"type":"Task","where":"record.status != 'done' and record.project.name == 'Website'","include":["project"]}`. The older `filters` list still works |
 | `POST /api/changes` | `{"steps":[...],"reason":"..."}`. Several creates, updates, and deletes saved together or not at all |
 | `GET /api/records/Task/documentation` | One visible record, including version and capabilities |

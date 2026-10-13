@@ -26,6 +26,7 @@ APPLY_HELP = (
     '{"steps": [{"create": TYPE, "data": {...}, "as": "name"}, {"update": TYPE, "id": ID or "$name", "changes": {...}, '
     '"expected_version": N}, {"delete": TYPE, "id": ID, "expected_version": N}], "reason": WHY}'
 )
+INDEX_ABOVE = 12  # a world with more types than this describes itself as an index first
 WHERE_HELP = (
     "One expression over record and actor, such as: record.stage == 'won' and record.organization.owner == actor.id. "
     "Use ==, !=, <, <=, >, >=, in, not in, is None, and, or, not. A dot follows a reference to the record it names. "
@@ -52,12 +53,19 @@ class WorldStore:
     The definition supplies the types and rules; the team world is the default.
     """
 
+    # FULL waits for the disk on every commit, so a saved change survives a power cut.
+    # NORMAL does not wait. The database stays consistent, but a power cut can lose the last moments.
+    synchronous = "FULL"
+
     def __init__(self, path: str | Path, definition: Definition | None = None) -> None:
         if definition is None:
             from worlds.team import DEFINITION as definition
         definition.check()
         self.definition = definition
         self.types = definition.types
+        # Types whose constraints could be broken by a change to something they refer to,
+        # plus the types through which such a type is reached.
+        self._dependent = self._dependent_types()
         self._keeper: sqlite3.Connection | None = None
         self._uri = str(path) == ":memory:"
         if self._uri:
@@ -70,6 +78,22 @@ class WorldStore:
             self.path = str(database)
             self._database = self.path
         self._initialize()
+
+    def _dependent_types(self) -> set[str]:
+        """Types worth visiting when following references back from a changed record."""
+        referrers: dict[str, set[str]] = {}
+        for type_name, definition in self.types.items():
+            for spec in definition["fields"].values():
+                target = spec.get("target") or spec.get("items", {}).get("target")
+                if target:
+                    referrers.setdefault(target, set()).add(type_name)
+        dependent = {type_name for type_name, definition in self.types.items() if definition.get("constraints")}
+        while True:
+            # A type with no constraints still leads somewhere if a dependent type refers to it.
+            more = {target for target, sources in referrers.items() if sources & dependent} - dependent
+            if not more:
+                return dependent
+            dependent |= more
 
     def close(self) -> None:
         """Release a shared in-memory database, if this store has one."""
@@ -85,6 +109,7 @@ class WorldStore:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 30000")
+        connection.execute(f"PRAGMA synchronous = {self.synchronous}")
         return connection
 
     @contextmanager
@@ -169,6 +194,29 @@ class WorldStore:
                         SELECT RAISE(ABORT, 'World history is append-only');
                     END;
             """)
+            connection.executescript("""
+                CREATE TABLE IF NOT EXISTS refs (
+                    source_type TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    field TEXT NOT NULL,
+                    target_type TEXT NOT NULL,
+                    target_id TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS refs_target ON refs (target_type, target_id);
+                CREATE INDEX IF NOT EXISTS refs_source ON refs (source_type, source_id);
+            """)
+            # One index per field name, shared by every type that has the field, so that a lookup by
+            # value does not read every record. An index per type and field would mean thousands
+            # of indexes in a large world, and every write pays for each one.
+            indexed = {
+                field for definition in self.types.values() for field, spec in definition["fields"].items()
+                if spec["type"] in ("reference", "enum", "date", "integer") or (spec["type"] == "text" and spec.get("max_length", 20000) <= 300)
+            }
+            for field in sorted(indexed):
+                column = f"json_extract(data, '$.{field}')"
+                connection.execute(
+                    f'CREATE INDEX IF NOT EXISTS "field_{field}" ON records (type, {column}, id) '
+                    f"WHERE {column} IS NOT NULL AND deleted_at IS NULL")
             # Databases from before agents were named gain the column, empty for old rows.
             for table in ("events", "views"):
                 if "agent" not in [row["name"] for row in connection.execute(f"PRAGMA table_info({table})")]:
@@ -183,6 +231,11 @@ class WorldStore:
                 raise ValueError(f"{self.path} holds the {saved} world, not {self.definition.name}.")
             if "world" not in meta:
                 connection.execute("INSERT INTO world_meta (key, value) VALUES ('world', ?)", (saved,))
+            if "refs" not in meta:
+                # Databases from before references were indexed are indexed once here.
+                for row in connection.execute("SELECT * FROM records WHERE deleted_at IS NULL").fetchall():
+                    self._index_references(connection, self._decode(row))
+                connection.execute("INSERT INTO world_meta (key, value) VALUES ('refs', '1')")
             if "seed_version" in meta:
                 return
             now = _now()
@@ -219,15 +272,69 @@ class WorldStore:
         row = connection.execute(sql, (type_name, record_id)).fetchone()
         return self._decode(row) if row else None
 
+    def _index_references(self, connection: sqlite3.Connection, record: dict[str, Any], *, live: bool = True) -> None:
+        """Keep the index of who refers to whom in step with one record."""
+        connection.execute("DELETE FROM refs WHERE source_type = ? AND source_id = ?", (record["type"], record["id"]))
+        if live:
+            connection.executemany(
+                "INSERT INTO refs (source_type, source_id, field, target_type, target_id) VALUES (?, ?, ?, ?, ?)",
+                [(record["type"], record["id"], field, target, target_id)
+                 for field, target, target_id in references(self.types, record["type"], record["data"])],
+            )
+
+    def _narrow(
+        self, connection: sqlite3.Connection, type_name: str, terms: Any,
+    ) -> tuple[str, list[Any]]:
+        """SQL for the terms that an index can answer. Terms it cannot use are skipped."""
+        fields = self.types[type_name]["fields"]
+        scalar = lambda value: value is None or type(value) in (str, int, bool)
+        sql, params = "", []
+        for path, operator, value in terms:
+            values = value if operator == "in" else [value]
+            if not 1 <= len(values) <= 500 or not all(scalar(item) for item in values):
+                continue
+            column = "id" if path[0] == "id" else f"json_extract(data, '$.{path[0]}')"
+            if path[0] != "id" and path[0] not in fields:
+                continue
+            if len(path) == 2:
+                # A path through a reference: find the records it could lead to, then match their IDs.
+                spec = fields[path[0]]
+                if spec["type"] != "reference" or (path[1] != "id" and path[1] not in self.types[spec["target"]]["fields"]):
+                    continue
+                inner_sql, inner_params = self._narrow(connection, spec["target"], [((path[1],), operator, value)])
+                if not inner_sql:
+                    continue
+                targets = [row["id"] for row in connection.execute(
+                    f"SELECT id FROM records WHERE type = '{spec['target']}' AND deleted_at IS NULL{inner_sql} LIMIT 501", inner_params)]
+                if len(targets) > 500:
+                    continue
+                values = targets
+                if not values:
+                    return " AND 0", []
+            if None in values:
+                if len(values) > 1:
+                    continue
+                sql += f" AND {column} IS NULL"
+            else:
+                sql += f" AND {column} IN ({', '.join('?' for _ in values)})"
+                params.extend(values)
+        return sql, params
+
     def _all(
-        self, connection: sqlite3.Connection, type_name: str | None = None,
+        self, connection: sqlite3.Connection, type_name: str | None = None, terms: Any = (),
+        *, after: str | None = None, limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        sql = "SELECT * FROM records WHERE deleted_at IS NULL"
-        params: tuple[str, ...] = ()
-        if type_name is not None:
-            sql += " AND type = ?"
-            params = (type_name,)
-        return [self._decode(row) for row in connection.execute(sql + " ORDER BY type, id", params)]
+        """Live records in order. With a type, `terms` narrow them through the indexes."""
+        if type_name is None:
+            return [self._decode(row) for row in connection.execute("SELECT * FROM records WHERE deleted_at IS NULL ORDER BY type, id")]
+        narrowed, params = self._narrow(connection, type_name, terms)
+        sql = f"SELECT * FROM records WHERE type = '{type_name}' AND deleted_at IS NULL{narrowed}"
+        if after is not None:
+            sql, params = sql + " AND id > ?", [*params, after]
+        sql += " ORDER BY id"
+        if limit is not None:
+            sql, params = sql + " LIMIT ?", [*params, limit]
+        return [self._decode(row) for row in connection.execute(sql, params)]
 
     def _actor(self, connection: sqlite3.Connection, actor_id: str) -> dict[str, Any]:
         if not isinstance(actor_id, str) or not actor_id:
@@ -246,10 +353,11 @@ class WorldStore:
                 return proposed
             return self._raw(connection, type_name, record_id, include_deleted=True)
 
-        def live(type_name: str) -> list[dict[str, Any]]:
-            records = self._all(connection, type_name)
+        def live(type_name: str, terms: Any = ()) -> list[dict[str, Any]]:
+            records = self._all(connection, type_name, terms)
             if proposed is None or proposed["type"] != type_name:
                 return records
+            # The proposed state may match where the saved one does not, so it is always a candidate.
             return [record for record in records if record["id"] != proposed["id"]] + [proposed]
 
         return rules.World(self.types, lookup, live)
@@ -284,12 +392,17 @@ class WorldStore:
     def _inbound(
         self, connection: sqlite3.Connection, type_name: str, record_id: str,
     ) -> list[dict[str, str]]:
-        inbound = []
-        for record in self._all(connection):
-            for field, target, target_id in references(self.types, record["type"], record["data"]):
-                if target == type_name and target_id == record_id:
-                    inbound.append({"type": record["type"], "id": record["id"], "field": field})
-        return inbound
+        return [
+            {"type": row["source_type"], "id": row["source_id"], "field": row["field"]}
+            for row in connection.execute(
+                "SELECT source_type, source_id, field FROM refs WHERE target_type = ? AND target_id = ? "
+                "ORDER BY source_type, source_id, field", (type_name, record_id))
+        ]
+
+    def _inbound_for(self, type_name: str, record_id: str) -> list[dict[str, str]]:
+        """The live records that refer to one record."""
+        with self._transaction() as connection:
+            return self._inbound(connection, type_name, record_id)
 
     def _can_delete(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
@@ -326,18 +439,17 @@ class WorldStore:
             return
         # A change can break a constraint written on a record that refers to this one,
         # directly or through other records. Follow the references back and re-check each.
-        everything = self._all(connection)
-        referrers: dict[tuple[str, str], list[dict[str, Any]]] = {}
-        for other in everything:
-            for _, target, target_id in references(self.types, other["type"], other["data"]):
-                referrers.setdefault((target, target_id), []).append(other)
+        # Only types that have constraints can be broken, and only they or types leading to them need following.
         seen, queue = {(record["type"], record["id"])}, [(record["type"], record["id"])]
         while queue:
-            for other in referrers.get(queue.pop(), []):
-                key = (other["type"], other["id"])
-                if key not in seen:
-                    seen.add(key)
-                    queue.append(key)
+            for inbound in self._inbound(connection, *queue.pop()):
+                key = (inbound["type"], inbound["id"])
+                if key in seen or key[0] not in self._dependent:
+                    continue
+                seen.add(key)
+                queue.append(key)
+                other = self._raw(connection, *key)
+                if other is not None and self.types[key[0]].get("constraints"):
                     check(other, other, "update", True)
 
     def _capabilities(
@@ -371,10 +483,26 @@ class WorldStore:
             self._deny("This actor is not allowed to read that record.")
         return record
 
-    def describe(self, actor_id: str) -> dict[str, Any]:
+    def describe(self, actor_id: str, only: list[str] | None = None) -> dict[str, Any]:
+        """What exists and what this actor may do.
+
+        A world with many types answers with an index of their names and
+        descriptions, because the full description would be too much to read.
+        `only` names the types to describe in full.
+        """
+        for type_name in only or []:
+            require_type(self.types, type_name)
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
-            types = deepcopy(self.types)
+            shared = {
+                "name": self.definition.title, "version": self.definition.version,
+                "actor": self._public(connection, actor, actor),
+                "query": {"operators": ["eq", "ne", "contains", "lt", "lte", "gt", "gte", "in"], "combine": "and"},
+                "mutations": {"concurrency": "expected_version is required for update and delete"},
+            }
+            if only is None and len(self.types) > INDEX_ABOVE:
+                return {**shared, "type_index": {name: definition["description"] for name, definition in self.types.items()}}
+            types = deepcopy(self.types if only is None else {name: self.types[name] for name in only})
             world = self._rules(connection)
             possible = lambda expression: rules.possible(world, world.node(actor), expression)
             for definition in types.values():
@@ -385,12 +513,7 @@ class WorldStore:
                         field["writable"] = False
                 if "constraints" in definition:
                     definition["constraints"] = [constraint["check"] for constraint in definition["constraints"]]
-            return {
-                "name": self.definition.title, "version": self.definition.version, "types": types,
-                "actor": self._public(connection, actor, actor),
-                "query": {"operators": ["eq", "ne", "contains", "lt", "lte", "gt", "gte", "in"], "combine": "and"},
-                "mutations": {"concurrency": "expected_version is required for update and delete"},
-            }
+            return {**shared, "types": types}
 
     def list_records(
         self, actor_id: str, type_name: str | None = None, *, agent: str | None = None,
@@ -502,15 +625,23 @@ class WorldStore:
     def find(
         self, actor_id: str, type_name: str, *, where: str | None = None,
         filters: list[dict[str, Any]] | None = None, include: list[str] | None = None,
-        agent: str | None = None,
-    ) -> dict[str, list[dict[str, Any]]]:
+        limit: int = 100, after: str | None = None, count: bool = False, agent: str | None = None,
+    ) -> dict[str, Any]:
         """Records of one type that match, with the records they refer to if asked.
 
         `where` is an expression in the language of the rules, over `record` and
         `actor`. It sees only what the actor may read: a path through a record
         they cannot read gives None. `include` names reference fields whose
         records come back under `included`.
+
+        At most `limit` records come back, in ID order. When there are more,
+        `more` is true and `next` is the value to pass as `after`. With `count`,
+        the answer is only how many match, and no record is shown.
         """
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise WorldError(400, "invalid_query", "limit must be a whole number from 1 to 1000.")
+        if after is not None and not isinstance(after, str):
+            raise WorldError(400, "invalid_query", "after must be the next value from an earlier answer.")
         fields = require_type(self.types, type_name)["fields"]
         filters = self._filters(type_name, [] if filters is None else filters)
         if where is not None:
@@ -543,20 +674,42 @@ class WorldStore:
                 record = self._raw(connection, kind, identifier)
                 return record if visible(record) else None
 
-            world = rules.World(self.types, lookup, lambda kind: [record for record in self._all(connection, kind) if visible(record)])
+            world = rules.World(self.types, lookup, lambda kind, terms=(): [
+                record for record in self._all(connection, kind, terms) if visible(record)])
+            tree = None if where is None else rules.parse(where, tuple(self.types))
+
+            def evaluation(record: dict[str, Any]) -> rules.Evaluation:
+                node = world.node(record)
+                return rules.Evaluation(world, world.node(actor), node, node, lambda target: True)
 
             def matches(record: dict[str, Any]) -> bool:
                 if not all(self._matches(record, item) for item in filters):
                     return False
-                if where is None:
-                    return True
-                node = world.node(record)
-                try:
-                    return rules.holds(rules.Evaluation(world, world.node(actor), node, node, lambda target: True), where)
-                except rules.RuleError as error:
-                    raise WorldError(400, "invalid_query", str(error), {"language": WHERE_HELP}) from error
+                return where is None or rules.holds(evaluation(record), where)
 
-            found = [record for record in self._all(connection, type_name) if visible(record) and matches(record)]
+            try:
+                # Let the indexes find candidates for the parts of the query that name exact values.
+                terms = [((item["field"],), "eq", item["value"]) for item in filters if item["op"] == "eq" and item["field"] in fields]
+                if tree is not None:
+                    terms += evaluation({"type": type_name, "id": "", "data": {}}).narrowing([tree], "record", {"actor": world.node(actor)})
+                found, total, cursor, more = [], 0, after, False
+                while not more:
+                    chunk = self._all(connection, type_name, terms, after=cursor, limit=500)
+                    for record in chunk:
+                        if visible(record) and matches(record):
+                            total += 1
+                            if not count:
+                                if len(found) == limit:
+                                    more = True
+                                    break
+                                found.append(record)
+                    if len(chunk) < 500:
+                        break
+                    cursor = chunk[-1]["id"]
+            except rules.RuleError as error:
+                raise WorldError(400, "invalid_query", str(error), {"language": WHERE_HELP}) from error
+            if count:
+                return {"count": total}
             included: dict[tuple[str, str], dict[str, Any]] = {}
             for record in found:
                 for field, target, target_id in references(self.types, type_name, record["data"]):
@@ -569,6 +722,7 @@ class WorldStore:
                     self._public(connection, actor, record) for record in found]),
                 "included": self._viewed(connection, actor_id, agent, "included in a query", [
                     self._public(connection, actor, record) for record in included.values()]),
+                "more": more, **({"next": found[-1]["id"]} if more else {}),
             }
 
     def _authorize_fields(
@@ -632,7 +786,9 @@ class WorldStore:
             "INSERT INTO records (type, id, data, version, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)",
             (type_name, record_id, _json(data), now, now),
         )
-        return self._raw(connection, type_name, record_id)
+        record = self._raw(connection, type_name, record_id)
+        self._index_references(connection, record)
+        return record
 
     def _audit(
         self, connection: sqlite3.Connection, action: str, actor_id: str,
@@ -724,6 +880,7 @@ class WorldStore:
             (_json(data), _now(), type_name, record_id),
         )
         after = self._raw(connection, type_name, record_id)
+        self._index_references(connection, after)
         self._audit(connection, "update", actor_id, provenance, before, after)
         if type_name == self.definition.actor_type and record_id == actor_id:
             actor = after
@@ -758,6 +915,7 @@ class WorldStore:
             (now, now, type_name, record_id),
         )
         after = self._raw(connection, type_name, record_id, include_deleted=True)
+        self._index_references(connection, after, live=False)
         self._audit(connection, "delete", actor_id, provenance, before, after)
         return self._public(connection, actor, after)
 

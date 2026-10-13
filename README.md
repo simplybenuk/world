@@ -389,6 +389,10 @@ many calls it makes to complete a task. [Read the second experiment](docs/second
 domain the agent has never seen. Both get every task right, and on World the
 agent uses half the calls and 58% of the time.
 
+[The fourth experiment](docs/fourth-experiment.md) runs a world of 201 types and a
+million records on one machine. It is 1.4 GB, single operations take 2 to 35 ms,
+and an agent completes the same tasks in the same time as in a 20-record world.
+
 There is no settled architecture or language yet.
 
 The first goal is not to build a production framework.

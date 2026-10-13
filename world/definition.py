@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+import re
 from typing import Any
 
 from .rules import RuleError, parse
@@ -44,6 +45,9 @@ class Definition:
     def check(self) -> None:
         """Parse every rule, so that a mistake fails when the world loads, not on a request."""
         names = tuple(self.types)
+        for name in (*names, *(field for definition in self.types.values() for field in definition["fields"])):
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", name):
+                raise RuleError(f"{name!r} is not a usable type or field name. Use letters, digits, and underscores.")
         for type_name, definition in self.types.items():
             try:
                 for operation in OPERATIONS:

@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from http.client import HTTPConnection
 import json
 from pathlib import Path
+import shutil
 from tempfile import TemporaryDirectory
 import threading
 
@@ -63,10 +64,15 @@ class Running:
 
 
 @contextmanager
-def running(world="crm"):
-    """A freshly seeded world in a temporary directory, served on a free local port."""
+def running(world="crm", source=None):
+    """A freshly seeded world in a temporary directory, served on a free local port.
+
+    With `source`, the world starts as a copy of that database, for worlds too large to seed each time.
+    """
     definition = worlds.load(world)
     with TemporaryDirectory(prefix="world-bench-") as directory:
+        if source is not None:
+            shutil.copyfile(source, Path(directory) / "world.sqlite3")
         store = WorldStore(Path(directory) / "world.sqlite3", definition)
         access = AccessTokens(directory, definition.actors)
         server = WorldHTTPServer(("127.0.0.1", 0), store, access, NoPlanner())
