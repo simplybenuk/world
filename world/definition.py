@@ -1,31 +1,33 @@
-"""What a world must supply to the engine: its types, its seed, and its rules."""
+"""What a world supplies to the engine: its types, their rules, and its seed records."""
 
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Protocol
+from typing import Any
 
-from .schema import Types, WorldError
+from .rules import RuleError, parse
+from .schema import Types
 
-
-class Records(Protocol):
-    """Live records as a rule sees them, inside the transaction being checked."""
-
-    def get(self, type_name: str, record_id: str, *, include_deleted: bool = False) -> dict[str, Any] | None: ...
-
-    def all(self, type_name: str | None = None) -> list[dict[str, Any]]: ...
-
-
-def deny(message: str = "This actor is not allowed to make that change.") -> None:
-    raise WorldError(403, "permission_denied", message)
+OPERATIONS = ("read", "create", "update", "delete")
 
 
 class Definition:
-    """One world. The engine supplies storage, validation, versions, and history.
+    """One world, as data. The engine supplies storage, validation, versions, and history.
 
-    The engine already rejects a reference to a missing record and the deletion
-    of a record that others reference. Everything else about who may do what,
-    and which states are valid, is decided here.
+    Each type has `rules` for read, create, update, and delete, and may have
+    `constraints`. A field may have a `write_rule` saying who can change it.
+    All are expressions in the language of `world.rules`, so the engine
+    enforces exactly what a client is shown.
+
+    The update rule is checked against the saved record and again against the
+    proposed one. A constraint is a dict with `check`, the expression that must
+    hold, and `message`. It may give `fields`, an error `code` and `status`,
+    and `on`, the operations it applies to (create and update by default).
+    The engine also re-checks the constraints of every record that refers to a
+    changed one, so a constraint between two records is written once.
+
+    The engine itself rejects a reference to a missing record and the deletion
+    of a record that others reference.
     """
 
     name: str  # short identifier, saved in the database
@@ -39,37 +41,21 @@ class Definition:
     def seed(self, today: date) -> list[tuple[str, str, dict[str, Any]]]:
         return []
 
-    def can_read(self, records: Records, actor: dict[str, Any], record: dict[str, Any]) -> bool:
-        return True
-
-    def can_update(self, records: Records, actor: dict[str, Any], record: dict[str, Any]) -> bool:
-        """Checked against the saved record and again against the proposed one."""
-        return False
-
-    def type_capabilities(self, records: Records, actor: dict[str, Any]) -> dict[str, dict[str, bool]]:
-        """Whether the actor can ever read, create, update, or delete each type."""
-        raise NotImplementedError
-
-    def protected_fields(self, actor: dict[str, Any], type_name: str) -> set[str]:
-        """Fields this actor may not set to a new value."""
-        return set()
-
-    def authorize_create(
-        self, records: Records, actor: dict[str, Any], type_name: str, data: dict[str, Any],
-    ) -> None:
-        deny()
-
-    def authorize_delete(self, records: Records, actor: dict[str, Any], record: dict[str, Any]) -> None:
-        deny()
-
-    def check_delete(self, records: Records, actor: dict[str, Any], record: dict[str, Any]) -> None:
-        """Raise WorldError when removing this record would break a constraint."""
-
-    def check(
-        self, records: Records, actor: dict[str, Any] | None, type_name: str, record_id: str,
-        data: dict[str, Any], before: dict[str, Any] | None,
-    ) -> None:
-        """Raise WorldError when the proposed state breaks a constraint.
-
-        The actor is None while seeding. References already point to live records.
-        """
+    def check(self) -> None:
+        """Parse every rule, so that a mistake fails when the world loads, not on a request."""
+        names = tuple(self.types)
+        for type_name, definition in self.types.items():
+            try:
+                for operation in OPERATIONS:
+                    parse(definition["rules"][operation], names)
+                for field in definition["fields"].values():
+                    if "write_rule" in field:
+                        parse(field["write_rule"], names)
+                for constraint in definition.get("constraints", []):
+                    parse(constraint["check"], names)
+                    if not set(constraint.get("on", ())) <= {"create", "update", "delete"}:
+                        raise RuleError("A constraint applies on create, update, or delete.")
+            except KeyError as error:
+                raise RuleError(f"{type_name} is missing {error}.") from error
+            except RuleError as error:
+                raise RuleError(f"{type_name}: {error}") from error

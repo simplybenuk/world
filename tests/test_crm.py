@@ -153,7 +153,7 @@ class CRMTest(unittest.TestCase):
         missing = self.assert_error(422, lambda: self.store.create("priya", "Interaction", {"kind": "call", "summary": "x", "organization": "harbor"}))
         self.assertEqual(missing.details["spec"]["type"], "date")
         denied = self.assert_error(403, lambda: self.store.update("tom", "Opportunity", "alder-training", {"amount": 1}, 1))
-        self.assertIn("only admin", " ".join(denied.details["constraints"]))
+        self.assertIn("saved.stage not in ('won', 'lost')", denied.details["rule"])
 
     def test_audit_lines_say_when_who_and_what_for_every_create_view_change_and_deletion(self):
         self.store.get_record("priya", "Opportunity", "harbor-pilot")

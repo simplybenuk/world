@@ -3,8 +3,17 @@
 from datetime import date, timedelta
 from typing import Any
 
-from world.definition import Definition, deny
-from world.schema import WorldError
+from world.definition import Definition
+
+MANAGER = "actor.role == 'manager'"
+TECHNICIAN = "actor.role == 'technician'"
+RELATIONSHIP = {"code": "invalid_relationship"}
+LAST_MANAGER = {"message": "The lab must retain at least one manager.", "fields": ["role"], "code": "last_manager", "status": 409}
+
+
+def staff(field):
+    return {"check": f"record.{field}.role in ('manager', 'technician')", "fields": [field], **RELATIONSHIP,
+            "message": f"{field} must be a manager or technician."}
 
 
 TYPES: dict[str, dict[str, Any]] = {
@@ -13,17 +22,18 @@ TYPES: dict[str, dict[str, Any]] = {
         "fields": {
             "name": {"type": "text", "required": True, "min_length": 1, "max_length": 160},
             "email": {"type": "text", "nullable": True, "default": None, "max_length": 254},
-            "role": {
-                "type": "enum", "required": True, "values": ["manager", "technician", "auditor"], "default": "technician",
-                "write_rule": "actor.role == manager",
-            },
+            "role": {"type": "enum", "required": True, "values": ["manager", "technician", "auditor"], "default": "technician", "write_rule": MANAGER},
         },
         "rules": {
-            "read": "actor is authenticated",
-            "create": "actor.role == manager",
-            "update": "actor.role == manager or (actor.role == technician and actor.id == record.id); only manager can change role",
-            "delete": "actor.role == manager and no live record references this person and another manager remains",
+            "read": "actor.id is not None",
+            "create": MANAGER,
+            "update": f"{MANAGER} or ({TECHNICIAN} and actor.id == record.id)",
+            "delete": MANAGER,
         },
+        "constraints": [
+            {"check": "count(p for p in Person if p.role == 'manager') >= 1", "on": ("update",), **LAST_MANAGER},
+            {"check": "record.role != 'manager' or count(p for p in Person if p.role == 'manager') > 1", "on": ("delete",), **LAST_MANAGER},
+        ],
     },
     "Instrument": {
         "description": "A measuring instrument the lab keeps calibrated, looked after by one custodian.",
@@ -32,40 +42,43 @@ TYPES: dict[str, dict[str, Any]] = {
             "kind": {"type": "enum", "required": True, "values": ["balance", "thermometer", "pipette", "gauge"]},
             "site": {"type": "enum", "required": True, "values": ["leeds", "cork", "lyon"]},
             "state": {"type": "enum", "required": True, "values": ["in-service", "quarantined", "retired"], "default": "in-service"},
-            "custodian": {"type": "reference", "target": "Person", "required": True, "write_rule": "actor.role == manager"},
+            "custodian": {"type": "reference", "target": "Person", "required": True, "write_rule": MANAGER},
             "interval_days": {"type": "integer", "required": True, "min": 1, "max": 3650},
         },
-        "constraints": [
-            "custodian.role is manager or technician",
-            "state cannot change to in-service while a Deviation for this instrument has disposition open",
-        ],
         "rules": {
-            "read": "actor is authenticated",
-            "create": "actor.role == manager",
-            "update": "actor.role == manager or record.custodian == actor.id; only manager can change custodian",
-            "delete": "actor.role == manager and no live record references this instrument",
+            "read": "actor.id is not None",
+            "create": MANAGER,
+            "update": f"{MANAGER} or ({TECHNICIAN} and record.custodian == actor.id)",
+            "delete": MANAGER,
         },
+        "constraints": [
+            staff("custodian"),
+            {"check": "not (saved is not None and changed('state') and record.state == 'in-service')"
+                      " or not any(d.disposition == 'open' for d in Deviation if d.instrument == record.id)",
+             "message": "This instrument has an open deviation and cannot return to service.", "fields": ["state"]},
+        ],
     },
     "Calibration": {
         "description": "One calibration of one instrument, with its result and measured drift.",
         "fields": {
             "instrument": {"type": "reference", "target": "Instrument", "required": True},
             "performed_on": {"type": "date", "required": True},
-            "technician": {
-                "type": "reference", "target": "Person", "required": True, "default": "$actor",
-                "write_rule": "a technician records their own calibrations; only manager can change an existing technician",
-            },
+            "technician": {"type": "reference", "target": "Person", "required": True, "default": "$actor", "write_rule": MANAGER},
             "result": {"type": "enum", "required": True, "values": ["pass", "adjusted", "fail"]},
             "drift_ppm": {"type": "integer", "nullable": True, "default": None, "min": 0},
             "certificate": {"type": "text", "nullable": True, "default": None, "max_length": 80},
         },
-        "constraints": ["result adjusted or fail requires drift_ppm", "technician.role is manager or technician"],
         "rules": {
-            "read": "actor is authenticated",
-            "create": "actor.role == manager or (actor.role == technician and record.technician == actor.id)",
-            "update": "actor.role == manager or record.technician == actor.id; only manager can change technician",
-            "delete": "actor.role == manager and no live record references this calibration",
+            "read": "actor.id is not None",
+            "create": f"{MANAGER} or ({TECHNICIAN} and record.technician == actor.id)",
+            "update": f"{MANAGER} or ({TECHNICIAN} and record.technician == actor.id)",
+            "delete": MANAGER,
         },
+        "constraints": [
+            staff("technician"),
+            {"check": "record.result == 'pass' or record.drift_ppm is not None",
+             "message": "An adjusted or failed calibration needs its drift_ppm.", "fields": ["drift_ppm"]},
+        ],
     },
     "Deviation": {
         "description": "A problem found with an instrument, open until someone decides its disposition.",
@@ -76,40 +89,31 @@ TYPES: dict[str, dict[str, Any]] = {
             "disposition": {"type": "enum", "required": True, "values": ["open", "use-as-is", "rework", "scrap"], "default": "open"},
             "summary": {"type": "text", "required": True, "min_length": 1, "max_length": 2000},
             "closed_on": {"type": "date", "nullable": True, "default": None},
-            "raised_by": {
-                "type": "reference", "target": "Person", "required": True, "default": "$actor",
-                "write_rule": "a technician raises deviations in their own name; only manager can change it afterwards",
-            },
+            "raised_by": {"type": "reference", "target": "Person", "required": True, "default": "$actor", "write_rule": MANAGER},
+        },
+        "rules": {
+            "read": "actor.id is not None",
+            "create": f"{MANAGER} or ({TECHNICIAN} and record.raised_by == actor.id)",
+            "update": f"{MANAGER} or ({TECHNICIAN} and (record.raised_by == actor.id or record.instrument.custodian == actor.id))",
+            "delete": MANAGER,
         },
         "constraints": [
-            "calibration is null or calibration.instrument == instrument",
-            "disposition other than open requires closed_on",
-            "only manager can change the disposition of a critical deviation",
+            {"check": "record.calibration is None or record.calibration.instrument == record.instrument", "fields": ["calibration"],
+             "message": "calibration must be for the same instrument as this deviation.", **RELATIONSHIP},
+            {"check": "record.disposition == 'open' or record.closed_on is not None",
+             "message": "A deviation with a disposition needs its closed_on date.", "fields": ["closed_on"]},
+            {"check": f"not (record.severity == 'critical' and changed('disposition') and record.disposition != 'open') or {MANAGER}",
+             "message": "Only a manager can change the disposition of a critical deviation.", "fields": ["disposition"],
+             "code": "permission_denied", "status": 403},
         ],
-        "rules": {
-            "read": "actor is authenticated",
-            "create": "actor.role == manager or (actor.role == technician and record.raised_by == actor.id)",
-            "update": "actor.role == manager or record.raised_by == actor.id or record.instrument.custodian == actor.id; only manager can change raised_by",
-            "delete": "actor.role == manager",
-        },
     },
 }
-
-
-def _failed(message, fields, constraint):
-    raise WorldError(422, "constraint_failed", message, {"fields": fields, "constraint": constraint})
-
-
-def _require_staff(records, field, person_id):
-    if records.get("Person", person_id)["data"]["role"] not in ("manager", "technician"):
-        raise WorldError(422, "invalid_relationship", f"{field} must be a manager or technician.",
-                         {"field": field, "allowed_roles": ["manager", "technician"]})
 
 
 class Lab(Definition):
     name = "lab"
     title = "Calibration lab"
-    version = "0.1.0"
+    version = "0.2.0"
     types = TYPES
     actors = ("ada", "kofi", "lena", "ines")
     seed_reason = "Initial lab records."
@@ -152,91 +156,6 @@ class Lab(Definition):
             deviation("gau-102-high", "gau-102", "gau-102-last", "major", "Reads 2% high above 6 bar.", "kofi"),
             deviation("bal-020-dropped", "bal-020", None, "critical", "Dropped in transit. Pan support is bent.", "lena"),
         ]
-
-    def can_update(self, records, actor, record):
-        role, type_name, data = actor["data"]["role"], record["type"], record["data"]
-        if role == "manager":
-            return True
-        if role != "technician":
-            return False
-        if type_name == "Person":
-            return record["id"] == actor["id"]
-        if type_name == "Instrument":
-            return data["custodian"] == actor["id"]
-        if type_name == "Calibration":
-            return data["technician"] == actor["id"]
-        instrument = records.get("Instrument", data["instrument"])
-        return actor["id"] in (data["raised_by"], instrument["data"]["custodian"] if instrument else None)
-
-    def type_capabilities(self, records, actor):
-        role = actor["data"]["role"]
-        return {
-            type_name: {
-                "read": True,
-                "create": role == "manager" or (role == "technician" and type_name in ("Calibration", "Deviation")),
-                "update": role in ("manager", "technician"),
-                "delete": role == "manager",
-            }
-            for type_name in self.types
-        }
-
-    def protected_fields(self, actor, type_name):
-        if actor["data"]["role"] == "manager":
-            return set()
-        return {"Person": {"role"}, "Instrument": {"custodian"}, "Calibration": {"technician"},
-                "Deviation": {"raised_by"}}.get(type_name, set())
-
-    def authorize_create(self, records, actor, type_name, data):
-        role = actor["data"]["role"]
-        if role == "manager":
-            return
-        if role != "technician" or type_name not in ("Calibration", "Deviation"):
-            deny()
-        if type_name == "Calibration" and data["technician"] != actor["id"]:
-            deny("A technician can only record a calibration they performed.")
-        if type_name == "Deviation" and data["raised_by"] != actor["id"]:
-            deny("A technician can only raise a deviation in their own name.")
-
-    def authorize_delete(self, records, actor, record):
-        if actor["data"]["role"] != "manager":
-            deny("Only a manager can delete records.")
-
-    def _last_manager(self, records):
-        return sum(person["data"]["role"] == "manager" for person in records.all("Person")) == 1
-
-    def check_delete(self, records, actor, record):
-        if record["type"] == "Person" and record["data"]["role"] == "manager" and self._last_manager(records):
-            raise WorldError(409, "last_manager", "The lab must retain at least one manager.")
-
-    def check(self, records, actor, type_name, record_id, data, before):
-        if type_name == "Person":
-            if before and before["data"]["role"] == "manager" and data["role"] != "manager" and self._last_manager(records):
-                raise WorldError(409, "last_manager", "The lab must retain at least one manager.")
-        elif type_name == "Instrument":
-            _require_staff(records, "custodian", data["custodian"])
-            if data["state"] == "in-service" and before and before["data"]["state"] != "in-service":
-                blocking = [other["id"] for other in records.all("Deviation")
-                            if other["data"]["instrument"] == record_id and other["data"]["disposition"] == "open"]
-                if blocking:
-                    raise WorldError(
-                        422, "constraint_failed", "This instrument has an open deviation and cannot return to service.",
-                        {"fields": ["state"], "open_deviations": blocking,
-                         "constraint": "state cannot change to in-service while a Deviation for this instrument has disposition open"},
-                    )
-        elif type_name == "Calibration":
-            _require_staff(records, "technician", data["technician"])
-            if data["result"] in ("adjusted", "fail") and data["drift_ppm"] is None:
-                _failed("An adjusted or failed calibration needs its drift_ppm.", ["drift_ppm"], "result adjusted or fail requires drift_ppm")
-        elif type_name == "Deviation":
-            calibration = records.get("Calibration", data["calibration"]) if data["calibration"] else None
-            if calibration and calibration["data"]["instrument"] != data["instrument"]:
-                raise WorldError(422, "invalid_relationship", "calibration must be for the same instrument as this deviation.",
-                                 {"field": "calibration", "instrument": data["instrument"]})
-            if data["disposition"] != "open" and data["closed_on"] is None:
-                _failed("A deviation with a disposition needs its closed_on date.", ["closed_on"], "disposition other than open requires closed_on")
-            changed = before is None or before["data"]["disposition"] != data["disposition"]
-            if data["severity"] == "critical" and changed and data["disposition"] != "open" and actor and actor["data"]["role"] != "manager":
-                deny("Only a manager can change the disposition of a critical deviation.")
 
 
 DEFINITION = Lab()

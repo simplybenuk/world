@@ -31,6 +31,17 @@ something, stand up a demo application and let people use it. Until then the
 work is experiments and improvements against the two aims above. Do not start
 building or hosting a public demo before Ben says the evidence is enough.
 
+### Order of improvements
+
+Ben, 2026-10-13. After the third experiment, work in this order:
+
+1. State each rule once, so the engine both enforces and describes it.
+2. Run the comparisons with a second agent, to see whether the result belongs to
+   World or to one model.
+3. Let an agent do more in one call.
+4. Test at enterprise size. This may need real infrastructure for World and for
+   any control, so plan it with Ben before building.
+
 ### World is the system of record, and provides no LLM
 
 Ben, 2026-10-08. World holds records, rules, and history in the simplest and

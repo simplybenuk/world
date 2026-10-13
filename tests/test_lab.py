@@ -19,7 +19,7 @@ class LabTest(unittest.TestCase):
 
     def test_an_instrument_cannot_return_to_service_with_an_open_deviation(self):
         error = self.assert_error(422, lambda: self.store.update("kofi", "Instrument", "gau-102", {"state": "in-service"}, 1), "constraint_failed")
-        self.assertEqual(error.details["open_deviations"], ["gau-102-high"])
+        self.assertIn("for d in Deviation if d.instrument == record.id", error.details["constraint"])
         self.store.update("kofi", "Deviation", "gau-102-high", {"disposition": "rework", "closed_on": "2026-10-13"}, 1)
         self.assertEqual(self.store.update("kofi", "Instrument", "gau-102", {"state": "in-service"}, 1)["data"]["state"], "in-service")
 

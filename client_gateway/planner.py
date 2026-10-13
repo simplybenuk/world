@@ -199,13 +199,11 @@ class CodexPlanner:
                     validate_value(field, value, descriptor)
                 except WorldError:
                     invalid()
-                rule = descriptor.get("write_rule", "")
-                if actor["data"].get("role") != "admin":
-                    protected = rule == "actor.role == admin" or (operation == "update" and "only admin can change" in rule)
+                if descriptor.get("writable") is False:
+                    # The world marks fields this actor cannot change. A new record may only take the default.
+                    default = actor["id"] if descriptor.get("default") == "$actor" else descriptor.get("default")
                     previous = by_id.get((type_name, proposal.get("id")), {}).get("data", {}).get(field)
-                    if protected and (operation == "create" or value != previous):
-                        invalid()
-                    if operation == "create" and "new record.author == actor.id" in rule and value != actor["id"]:
+                    if value != (previous if operation == "update" else default):
                         invalid()
                 targets = [(descriptor["target"], value)] if descriptor["type"] == "reference" and value is not None else []
                 if descriptor["type"] == "list" and descriptor.get("items", {}).get("type") == "reference":

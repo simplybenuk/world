@@ -186,7 +186,7 @@ try {
   await mobile.getByRole('button', { name: 'Close record details', exact: true }).click();
   await mobile.getByRole('button', { name: 'Open navigation', exact: true }).click();
   await mobile.getByRole('button', { name: 'Discover schema', exact: true }).click();
-  assert.ok((await mobile.locator('#schema-dialog').innerText()).includes('Only an admin') || (await mobile.locator('#schema-dialog').innerText()).includes('actor.role == admin'));
+  assert.ok((await mobile.locator('#schema-dialog').innerText()).includes("actor.role == 'admin'"));
   await mobile.getByRole('button', { name: 'Close schema', exact: true }).click();
 
   await signIn(mobile, 'sam');

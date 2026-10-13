@@ -12,6 +12,7 @@ import sqlite3
 from typing import Any, Iterator
 from uuid import uuid4
 
+from . import rules
 from .definition import Definition
 from .schema import WorldError, references, require_type, validate_data, validate_value
 
@@ -31,19 +32,6 @@ def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
-class _Records:
-    """The live records a definition's rules may consult during one transaction."""
-
-    def __init__(self, store: "WorldStore", connection: sqlite3.Connection) -> None:
-        self._store, self._connection = store, connection
-
-    def get(self, type_name: str, record_id: str, *, include_deleted: bool = False) -> dict[str, Any] | None:
-        return self._store._raw(self._connection, type_name, record_id, include_deleted=include_deleted)
-
-    def all(self, type_name: str | None = None) -> list[dict[str, Any]]:
-        return self._store._all(self._connection, type_name)
-
-
 class WorldStore:
     """One database, with a new SQLite connection for every operation.
 
@@ -55,6 +43,7 @@ class WorldStore:
     def __init__(self, path: str | Path, definition: Definition | None = None) -> None:
         if definition is None:
             from worlds.team import DEFINITION as definition
+        definition.check()
         self.definition = definition
         self.types = definition.types
         self._keeper: sqlite3.Connection | None = None
@@ -236,17 +225,49 @@ class WorldStore:
             raise WorldError(401, "invalid_actor", "The authenticated actor no longer exists.")
         return actor
 
+    def _rules(
+        self, connection: sqlite3.Connection, proposed: dict[str, Any] | None = None,
+    ) -> rules.World:
+        """The records as rules see them, with a proposed record in place of its saved state."""
+        def lookup(type_name: str, record_id: str) -> dict[str, Any] | None:
+            if proposed is not None and (type_name, record_id) == (proposed["type"], proposed["id"]):
+                return proposed
+            return self._raw(connection, type_name, record_id, include_deleted=True)
+
+        def live(type_name: str) -> list[dict[str, Any]]:
+            records = self._all(connection, type_name)
+            if proposed is None or proposed["type"] != type_name:
+                return records
+            return [record for record in records if record["id"] != proposed["id"]] + [proposed]
+
+        return rules.World(self.types, lookup, live)
+
+    def _holds(
+        self, connection: sqlite3.Connection, expression: str, actor: dict[str, Any] | None,
+        record: dict[str, Any], saved: dict[str, Any] | None, proposed: dict[str, Any] | None = None,
+    ) -> bool:
+        world = self._rules(connection, proposed)
+
+        def can_read(node: rules.Node) -> bool:
+            target = world.lookup(node.type, node.id)
+            return bool(target and actor and self._can_read(connection, actor, target))
+
+        evaluation = rules.Evaluation(world, world.node(actor), world.node(record), world.node(saved), can_read)
+        return rules.holds(evaluation, expression)
+
     def _can_read(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
     ) -> bool:
-        return self.definition.can_read(_Records(self, connection), actor, record)
+        return self._holds(connection, self.types[record["type"]]["rules"]["read"], actor, record, record)
 
     def _can_update(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
     ) -> bool:
+        """Judge the update rule for a record as saved, or as proposed against its saved state."""
         if record.get("deleted"):
             return False
-        return self.definition.can_update(_Records(self, connection), actor, record)
+        saved = self._raw(connection, record["type"], record["id"]) or record
+        return self._holds(connection, self.types[record["type"]]["rules"]["update"], actor, record, saved, record)
 
     def _inbound(
         self, connection: sqlite3.Connection, type_name: str, record_id: str,
@@ -263,13 +284,49 @@ class WorldStore:
     ) -> bool:
         if record.get("deleted") or self._inbound(connection, record["type"], record["id"]):
             return False
-        records = _Records(self, connection)
+        if not self._holds(connection, self.types[record["type"]]["rules"]["delete"], actor, record, record):
+            return False
         try:
-            self.definition.authorize_delete(records, actor, record)
-            self.definition.check_delete(records, actor, record)
+            self._check_constraints(connection, actor, record, record, "delete")
         except WorldError:
             return False
         return True
+
+    def _check_constraints(
+        self, connection: sqlite3.Connection, actor: dict[str, Any] | None, record: dict[str, Any],
+        saved: dict[str, Any] | None, operation: str,
+    ) -> None:
+        """Check this record's constraints, then those of every record that depends on it."""
+        def check(subject: dict[str, Any], subject_saved: dict[str, Any] | None, applies: str, other: bool) -> None:
+            for constraint in self.types[subject["type"]].get("constraints", []):
+                if applies not in constraint.get("on", ("create", "update")):
+                    continue
+                if not self._holds(connection, constraint["check"], actor, subject, subject_saved, record):
+                    details = {"fields": constraint.get("fields", []), "constraint": constraint["check"]}
+                    if other:
+                        details.update({"type": subject["type"], "id": subject["id"]})
+                    message = constraint["message"] if not other else (
+                        f"This change would break a rule for {subject['type']} {subject['id']}: {constraint['message']}")
+                    raise WorldError(constraint.get("status", 422), constraint.get("code", "constraint_failed"), message, details)
+
+        check(record, saved, operation, False)
+        if operation != "update":
+            return
+        # A change can break a constraint written on a record that refers to this one,
+        # directly or through other records. Follow the references back and re-check each.
+        everything = self._all(connection)
+        referrers: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for other in everything:
+            for _, target, target_id in references(self.types, other["type"], other["data"]):
+                referrers.setdefault((target, target_id), []).append(other)
+        seen, queue = {(record["type"], record["id"])}, [(record["type"], record["id"])]
+        while queue:
+            for other in referrers.get(queue.pop(), []):
+                key = (other["type"], other["id"])
+                if key not in seen:
+                    seen.add(key)
+                    queue.append(key)
+                    check(other, other, "update", True)
 
     def _capabilities(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
@@ -306,11 +363,16 @@ class WorldStore:
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             types = deepcopy(self.types)
-            capabilities = self.definition.type_capabilities(_Records(self, connection), actor)
-            for type_name, definition in types.items():
-                definition["capabilities"] = {**capabilities[type_name], "rules": definition.pop("rules")}
-                for field in self.definition.protected_fields(actor, type_name):
-                    definition["fields"][field]["writable"] = False
+            world = self._rules(connection)
+            possible = lambda expression: rules.possible(world, world.node(actor), expression)
+            for definition in types.values():
+                stated = definition.pop("rules")
+                definition["capabilities"] = {**{operation: possible(rule) for operation, rule in stated.items()}, "rules": stated}
+                for field in definition["fields"].values():
+                    if "write_rule" in field and not possible(field["write_rule"]):
+                        field["writable"] = False
+                if "constraints" in definition:
+                    definition["constraints"] = [constraint["check"] for constraint in definition["constraints"]]
             return {
                 "name": self.definition.title, "version": self.definition.version, "types": types,
                 "actor": self._public(connection, actor, actor),
@@ -433,17 +495,19 @@ class WorldStore:
             ])
 
     def _authorize_fields(
-        self, actor: dict[str, Any], type_name: str, changes: dict[str, Any],
+        self, connection: sqlite3.Connection, actor: dict[str, Any], proposed: dict[str, Any],
         before: dict[str, Any],
     ) -> None:
-        changed_protected = [
-            field for field in self.definition.protected_fields(actor, type_name)
-            if field in changes and changes[field] != before["data"].get(field)
-        ]
-        if changed_protected:
+        fields = self.types[proposed["type"]]["fields"]
+        refused = sorted(
+            field for field, spec in fields.items()
+            if "write_rule" in spec and proposed["data"].get(field) != before["data"].get(field)
+            and not self._holds(connection, spec["write_rule"], actor, proposed, before, proposed)
+        )
+        if refused:
             raise WorldError(
                 403, "permission_denied", "This actor is not allowed to change these fields.",
-                {"fields": sorted(changed_protected)},
+                {"fields": refused, "rules": {field: fields[field]["write_rule"] for field in refused}},
             )
 
     def _validate_relationships(
@@ -456,7 +520,8 @@ class WorldStore:
                     422, "invalid_reference", "A relationship must point to a live record of the required type.",
                     {"field": field, "target": target, "id": target_id},
                 )
-        self.definition.check(_Records(self, connection), actor, type_name, record_id, data, before)
+        proposed = {**(before or {}), "type": type_name, "id": record_id, "data": data}
+        self._check_constraints(connection, actor, proposed, before, "update" if before else "create")
 
     def _provenance(
         self, connection: sqlite3.Connection, actor_id: str, action: str,
@@ -528,8 +593,10 @@ class WorldStore:
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             data = validate_data(self.types, type_name, data, actor_id=actor_id)
-            self.definition.authorize_create(_Records(self, connection), actor, type_name, data)
             record_id = f"{type_name.lower()}-{uuid4().hex}"
+            rule = self.types[type_name]["rules"]["create"]
+            if not self._holds(connection, rule, actor, {"type": type_name, "id": record_id, "data": data}, None):
+                raise WorldError(403, "permission_denied", "This actor is not allowed to create this record.", {"rule": rule})
             self._validate_relationships(connection, actor, type_name, record_id, data, None)
             provenance = self._provenance(connection, actor_id, "create", provenance)
             record = self._insert(connection, type_name, record_id, data, _now())
@@ -547,17 +614,20 @@ class WorldStore:
             if not self._can_update(connection, actor, before):
                 raise WorldError(
                     403, "permission_denied", "This actor is not allowed to update this record.",
-                    {"rule": self.types[type_name]["rules"]["update"], "constraints": self.types[type_name].get("constraints", [])},
+                    {"rule": self.types[type_name]["rules"]["update"]},
                 )
             self._check_version(before, expected_version)
             changes = validate_data(self.types, type_name, changes, partial=True, actor_id=actor_id)
             if not changes:
                 raise WorldError(422, "empty_changes", "An update must include at least one field.")
-            self._authorize_fields(actor, type_name, changes, before)
             data = validate_data(self.types, type_name, {**before["data"], **changes}, actor_id=actor_id)
             proposed = {**before, "data": data}
+            self._authorize_fields(connection, actor, proposed, before)
             if not self._can_update(connection, actor, proposed):
-                self._deny("This actor would not be allowed to update the record after this change.")
+                raise WorldError(
+                    403, "permission_denied", "This actor would not be allowed to update the record after this change.",
+                    {"rule": self.types[type_name]["rules"]["update"]},
+                )
             self._validate_relationships(connection, actor, type_name, record_id, data, before)
             provenance = self._provenance(connection, actor_id, "update", provenance)
             connection.execute(
@@ -578,13 +648,14 @@ class WorldStore:
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
             before = self._get_authorized(connection, actor, type_name, record_id)
-            records = _Records(self, connection)
-            self.definition.authorize_delete(records, actor, before)
+            rule = self.types[type_name]["rules"]["delete"]
+            if not self._holds(connection, rule, actor, before, before):
+                raise WorldError(403, "permission_denied", "This actor is not allowed to delete this record.", {"rule": rule})
             self._check_version(before, expected_version)
             inbound = self._inbound(connection, type_name, record_id)
             if inbound:
                 raise WorldError(409, "record_referenced", "Remove live relationships before deleting this record.", {"references": inbound})
-            self.definition.check_delete(records, actor, before)
+            self._check_constraints(connection, actor, before, before, "delete")
             provenance = self._provenance(connection, actor_id, "delete", provenance)
             now = _now()
             connection.execute(
