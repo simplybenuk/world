@@ -109,9 +109,43 @@ Codex was run again on World after the rules became expressions (see
 - The prompt pointed EspoCRM's agent at the full metadata. EspoCRM can return
   one part of it, and an agent that knew to ask for only the lab's entities
   would read far less. Nothing in the system tells an agent that.
-- A scripted client that already knows each API needs 17 calls on World and 12
-  on EspoCRM. EspoCRM's API is not slower to use once learned. It is slower to
+- A scripted client that already knows each API needed 17 calls on World (14
+  since the change below) and 12 on EspoCRM. EspoCRM's API is not slower to use once learned. It is slower to
   learn.
+
+## Doing more in one call
+
+After these runs, World gained two operations. Both are in `GET /api/world`.
+
+- A query takes a `where` expression in the language of the rules, and may
+  follow references: `record.instrument.tag == 'PIP-007' and record.disposition == 'open'`.
+  `'harbor' in record.name` matches part of a text. `include` returns the
+  records a result refers to. A query cannot see through a record the actor may
+  not read.
+- `POST /api/changes` saves several changes together or none of them. A later
+  step can use the ID of a record an earlier step created.
+
+| Lab tasks on World, 15 runs | Calls before | Calls after | Seconds before | Seconds after |
+| --- | --- | --- | --- | --- |
+| Scripted shortest path, 5 tasks | 17 | 14 | | |
+| Codex | 54 | 44 | 392 | 506 |
+| Claude | 51 | 44 | 172 | 176 |
+
+Both agents used both operations without being told to, and every run was
+correct. Calls fell by about 15%. Time did not fall. Three of the five tasks
+were already at their floor, and a larger request takes the agent longer to
+write. The Codex times vary by 100 seconds between identical runs on different
+hours, so only the call counts are comparable for it.
+
+The stronger gain is that the three writes of the failed-calibration task now
+succeed or fail as one. Before, a refusal at the third write left the first two
+saved.
+
+The first version of this change made the CRM tasks worse. Claude needed 67
+calls with 15 rejected, because the new query language had no way to search
+part of a name and the description no longer mentioned the old filter that
+did. With text search added, the same runs took 47 calls with none rejected.
+Codex had needed 51 before the change.
 
 ## What the two experiments show together
 

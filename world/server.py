@@ -25,11 +25,17 @@ DEFAULT_DATA_DIR = Path(os.environ.get("WORLD_DATA_DIR", "~/.local/share/world")
 # so that a client with nothing but a URL and a token does not have to guess.
 OPERATIONS = {
     "list": "GET /api/records?type=TYPE",
-    "query": 'POST /api/query {"type": TYPE, "filters": [{"field": FIELD, "op": OPERATOR, "value": VALUE}]}',
+    "query": 'POST /api/query {"type": TYPE, "where": EXPRESSION, "include": [REFERENCE_FIELD]}. EXPRESSION is in the language of the rules, '
+             "over record and actor, and may follow references: record.instrument.tag == 'X' and record.state != 'done'. "
+             "'harbor' in record.name matches part of a text, ignoring case. "
+             "Records named by include come back under included",
     "get": "GET /api/records/TYPE/ID",
     "create": 'POST /api/records/TYPE {"data": {FIELD: VALUE}, "reason": WHY}',
     "update": 'PATCH /api/records/TYPE/ID {"changes": {FIELD: VALUE}, "expected_version": VERSION, "reason": WHY}',
     "delete": 'DELETE /api/records/TYPE/ID {"expected_version": VERSION, "reason": WHY}',
+    "several changes at once": 'POST /api/changes {"steps": [{"create": TYPE, "data": {...}, "as": NAME}, '
+                               '{"update": TYPE, "id": ID, "changes": {...}, "expected_version": VERSION}], "reason": WHY}. '
+                               'All steps are saved or none. A later step may write "$NAME" for the ID of a record created earlier',
     "history": "GET /api/history/TYPE/ID",
     "audit": "GET /api/audit or GET /api/audit/TYPE/ID, plain text lines of when, who, and what happened",
 }
@@ -155,7 +161,11 @@ class WorldHandler(BaseHTTPRequestHandler):
                 type_name = parse_qs(split.query).get("type", [None])[0]
                 return self._respond(200, {"records": store.list_records(actor_id, type_name, agent=self.agent)})
             if path == "/api/query" and method == "POST":
-                return self._respond(200, {"records": store.query(actor_id, body.get("type"), body.get("filters", []), agent=self.agent)})
+                found = store.find(actor_id, body.get("type"), where=body.get("where"), filters=body.get("filters", []),
+                                   include=body.get("include"), agent=self.agent)
+                return self._respond(200, found if body.get("include") else {"records": found["records"]})
+            if path == "/api/changes" and method == "POST":
+                return self._respond(200, {"records": store.apply(actor_id, body.get("steps"), self._provenance(actor_id, body))})
             parts = [unquote(part) for part in path.strip("/").split("/")]
             if len(parts) == 3 and parts[:2] == ["api", "types"] and method == "GET":
                 description = store.describe(actor_id)
@@ -238,7 +248,10 @@ class WorldHandler(BaseHTTPRequestHandler):
             raise ClientError(413, "request_too_large", "The request is too large.")
         if not length:
             return {}
-        if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+        # A browser cannot send a cross-site JSON content type without asking first, so the cookie
+        # session needs this check. A request that carries a bearer token does not.
+        bearer = self.headers.get("Authorization", "").startswith("Bearer ")
+        if not bearer and self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
             self.close_connection = True
             raise ClientError(415, "invalid_content_type", "Use application/json for record operations.")
         value = strict_json(self.rfile.read(length))

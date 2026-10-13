@@ -163,7 +163,8 @@ bodies must be JSON objects with `Content-Type: application/json`.
 | `GET /api/world` | Actor, types, fields, rules, capabilities, query operators, and the operations in this table |
 | `GET /api/types/Task` | Description of one type |
 | `GET /api/records?type=Task` | Visible records of one type; omit `type` for all visible records |
-| `POST /api/query` | `{"type":"Task","filters":[{"field":"status","op":"ne","value":"done"}]}` |
+| `POST /api/query` | `{"type":"Task","where":"record.status != 'done' and record.project.name == 'Website'","include":["project"]}`. The older `filters` list still works |
+| `POST /api/changes` | `{"steps":[...],"reason":"..."}`. Several creates, updates, and deletes saved together or not at all |
 | `GET /api/records/Task/documentation` | One visible record, including version and capabilities |
 | `POST /api/records/Task` | Create with `data`, `reason`, and optional `evidence` |
 | `PATCH /api/records/Task/documentation` | Update with `changes`, `expected_version`, `reason`, and optional `evidence` |

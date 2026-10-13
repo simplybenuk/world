@@ -52,13 +52,12 @@ def solve_failed(client):
     client.get("/api/world")
     (instrument,) = _query(client, "Instrument", tag="TH-221")
     today = instrument["updated_at"][:10]
-    _, body = client.call("POST", "/api/records/Calibration", {"data": {
-        "instrument": instrument["id"], "performed_on": today, "result": "fail", "drift_ppm": 950}, "reason": "TH-221 failed calibration."})
-    client.call("POST", "/api/records/Deviation", {"data": {
-        "instrument": instrument["id"], "calibration": body["record"]["id"], "severity": "major",
-        "summary": "Failed calibration with 950 ppm drift."}, "reason": "TH-221 failed calibration."})
-    client.call("PATCH", f"/api/records/Instrument/{instrument['id']}", {
-        "changes": {"state": "quarantined"}, "expected_version": instrument["version"], "reason": "TH-221 failed calibration."})
+    client.call("POST", "/api/changes", {"reason": "TH-221 failed calibration.", "steps": [
+        {"create": "Calibration", "as": "calibration",
+         "data": {"instrument": instrument["id"], "performed_on": today, "result": "fail", "drift_ppm": 950}},
+        {"create": "Deviation", "data": {"instrument": instrument["id"], "calibration": "$calibration", "severity": "major",
+                                         "summary": "Failed calibration with 950 ppm drift."}},
+        {"update": "Instrument", "id": instrument["id"], "changes": {"state": "quarantined"}, "expected_version": instrument["version"]}]})
     return "Recorded the failed calibration, raised a major deviation, and quarantined TH-221."
 
 
@@ -77,10 +76,11 @@ def check_failed(store, answer):
 
 def solve_close(client):
     client.get("/api/world")
-    (instrument,) = _query(client, "Instrument", tag="PIP-007")
-    (deviation,) = _query(client, "Deviation", instrument=instrument["id"], disposition="open")
+    _, body = client.call("POST", "/api/query", {
+        "type": "Deviation", "where": "record.instrument.tag == 'PIP-007' and record.disposition == 'open'"})
+    (deviation,) = body["records"]
     client.call("PATCH", f"/api/records/Deviation/{deviation['id']}", {
-        "changes": {"disposition": "use-as-is", "closed_on": instrument["updated_at"][:10]},
+        "changes": {"disposition": "use-as-is", "closed_on": deviation["updated_at"][:10]},
         "expected_version": deviation["version"], "reason": "Kofi closed the deviation as use-as-is."})
     return "Closed the PIP-007 deviation as use-as-is."
 

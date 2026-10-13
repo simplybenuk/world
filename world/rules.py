@@ -223,7 +223,11 @@ class Evaluation:
         if isinstance(operator, ast.NotEq):
             return left != right
         if isinstance(operator, (ast.In, ast.NotIn)):
-            found = right is not None and any(left == item for item in right)
+            if isinstance(right, str):
+                # Text contains text, ignoring case, as a person searching by name expects.
+                found = isinstance(left, str) and left.casefold() in right.casefold()
+            else:
+                found = right is not None and not isinstance(right, Node) and any(left == item for item in right)
             return found == isinstance(operator, ast.In)
         if left is None or right is None or isinstance(left, Node) or isinstance(right, Node):
             return False

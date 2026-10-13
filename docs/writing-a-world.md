@@ -129,6 +129,8 @@ tree and walks the tree. It never runs it as Python.
 - **Comparison.** `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not in`, `is None`,
   `is not None`. A reference equals the ID it holds, so `record.owner == actor.id`
   and `actor.id in record.members` both work. Ordering against `None` is false.
+- **Text.** `'harbor' in record.name` is true when the text contains that part,
+  ignoring case. There are no string methods.
 - **Logic.** `and`, `or`, `not`, and brackets.
 - **Values.** Strings, whole numbers, `True`, `False`, `None`, and tuples of them.
 
@@ -141,6 +143,13 @@ tree and walks the tree. It never runs it as Python.
 
 Arithmetic, function definitions, other function calls, and names other than
 those above are refused when the world loads.
+
+## The same language in queries
+
+`POST /api/query` accepts a `where` expression in this language, over `record`
+and `actor`. A client that has read a world's rules already knows how to query
+it. A query sees only what the actor may read, so a path through a record they
+cannot read gives `None`.
 
 ## What the engine derives
 

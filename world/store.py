@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
+import ast
 import json
 import re
 from pathlib import Path
@@ -19,6 +20,17 @@ from .schema import WorldError, references, require_type, validate_data, validat
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+APPLY_HELP = (
+    '{"steps": [{"create": TYPE, "data": {...}, "as": "name"}, {"update": TYPE, "id": ID or "$name", "changes": {...}, '
+    '"expected_version": N}, {"delete": TYPE, "id": ID, "expected_version": N}], "reason": WHY}'
+)
+WHERE_HELP = (
+    "One expression over record and actor, such as: record.stage == 'won' and record.organization.owner == actor.id. "
+    "Use ==, !=, <, <=, >, >=, in, not in, is None, and, or, not. A dot follows a reference to the record it names. "
+    "'harbor' in record.name matches part of a text, ignoring case. There are no methods such as lower() or startswith()."
+)
 
 
 def _agent(value: Any) -> str | None:
@@ -485,14 +497,79 @@ class WorldStore:
         self, actor_id: str, type_name: str, filters: list[dict[str, Any]] | None = None,
         *, agent: str | None = None,
     ) -> list[dict[str, Any]]:
-        require_type(self.types, type_name)
+        return self.find(actor_id, type_name, filters=filters, agent=agent)["records"]
+
+    def find(
+        self, actor_id: str, type_name: str, *, where: str | None = None,
+        filters: list[dict[str, Any]] | None = None, include: list[str] | None = None,
+        agent: str | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Records of one type that match, with the records they refer to if asked.
+
+        `where` is an expression in the language of the rules, over `record` and
+        `actor`. It sees only what the actor may read: a path through a record
+        they cannot read gives None. `include` names reference fields whose
+        records come back under `included`.
+        """
+        fields = require_type(self.types, type_name)["fields"]
         filters = self._filters(type_name, [] if filters is None else filters)
+        if where is not None:
+            try:
+                if not isinstance(where, str) or len(where) > 2000:
+                    raise rules.RuleError("where must be an expression of up to 2,000 characters.")
+                if sum(1 for _ in ast.walk(rules.parse(where, tuple(self.types)))) > 200:
+                    raise rules.RuleError("where is too large.")
+            except rules.RuleError as error:
+                raise WorldError(400, "invalid_query", str(error), {"language": WHERE_HELP}) from error
+        include = [] if include is None else include
+        if not isinstance(include, list) or any(not isinstance(name, str) for name in include):
+            raise WorldError(400, "invalid_query", "include must be a list of reference field names.")
+        followable = [name for name, spec in fields.items() if spec["type"] == "reference" or spec.get("items", {}).get("type") == "reference"]
+        if set(include) - set(followable):
+            raise WorldError(400, "invalid_query", "include names a field that is not a reference.", {"references": followable})
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
-            return self._viewed(connection, actor_id, agent, "found by a query", [
-                self._public(connection, actor, record) for record in self._all(connection, type_name)
-                if self._can_read(connection, actor, record) and all(self._matches(record, item) for item in filters)
-            ])
+            readable: dict[tuple[str, str], bool] = {}
+
+            def visible(record: dict[str, Any] | None) -> bool:
+                if record is None:
+                    return False
+                key = (record["type"], record["id"])
+                if key not in readable:
+                    readable[key] = self._can_read(connection, actor, record)
+                return readable[key]
+
+            def lookup(kind: str, identifier: str) -> dict[str, Any] | None:
+                record = self._raw(connection, kind, identifier)
+                return record if visible(record) else None
+
+            world = rules.World(self.types, lookup, lambda kind: [record for record in self._all(connection, kind) if visible(record)])
+
+            def matches(record: dict[str, Any]) -> bool:
+                if not all(self._matches(record, item) for item in filters):
+                    return False
+                if where is None:
+                    return True
+                node = world.node(record)
+                try:
+                    return rules.holds(rules.Evaluation(world, world.node(actor), node, node, lambda target: True), where)
+                except rules.RuleError as error:
+                    raise WorldError(400, "invalid_query", str(error), {"language": WHERE_HELP}) from error
+
+            found = [record for record in self._all(connection, type_name) if visible(record) and matches(record)]
+            included: dict[tuple[str, str], dict[str, Any]] = {}
+            for record in found:
+                for field, target, target_id in references(self.types, type_name, record["data"]):
+                    if field.split("[")[0] in include and (target, target_id) not in included:
+                        related = lookup(target, target_id)
+                        if related is not None:
+                            included[target, target_id] = related
+            return {
+                "records": self._viewed(connection, actor_id, agent, "found by a query", [
+                    self._public(connection, actor, record) for record in found]),
+                "included": self._viewed(connection, actor_id, agent, "included in a query", [
+                    self._public(connection, actor, record) for record in included.values()]),
+            }
 
     def _authorize_fields(
         self, connection: sqlite3.Connection, actor: dict[str, Any], proposed: dict[str, Any],
@@ -589,82 +666,159 @@ class WorldStore:
         self, actor_id: str, type_name: str, data: dict[str, Any],
         provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        require_type(self.types, type_name)
         with self._transaction(write=True) as connection:
-            actor = self._actor(connection, actor_id)
-            data = validate_data(self.types, type_name, data, actor_id=actor_id)
-            record_id = f"{type_name.lower()}-{uuid4().hex}"
-            rule = self.types[type_name]["rules"]["create"]
-            if not self._holds(connection, rule, actor, {"type": type_name, "id": record_id, "data": data}, None):
-                raise WorldError(403, "permission_denied", "This actor is not allowed to create this record.", {"rule": rule})
-            self._validate_relationships(connection, actor, type_name, record_id, data, None)
-            provenance = self._provenance(connection, actor_id, "create", provenance)
-            record = self._insert(connection, type_name, record_id, data, _now())
-            self._audit(connection, "create", actor_id, provenance, None, record)
-            return self._public(connection, actor, record)
+            return self._create(connection, self._actor(connection, actor_id), type_name, data, provenance)
+
+    def _create(
+        self, connection: sqlite3.Connection, actor: dict[str, Any], type_name: str,
+        data: dict[str, Any], provenance: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        actor_id = actor["id"]
+        require_type(self.types, type_name)
+        data = validate_data(self.types, type_name, data, actor_id=actor_id)
+        record_id = f"{type_name.lower()}-{uuid4().hex}"
+        rule = self.types[type_name]["rules"]["create"]
+        if not self._holds(connection, rule, actor, {"type": type_name, "id": record_id, "data": data}, None):
+            raise WorldError(403, "permission_denied", "This actor is not allowed to create this record.", {"rule": rule})
+        self._validate_relationships(connection, actor, type_name, record_id, data, None)
+        provenance = self._provenance(connection, actor_id, "create", provenance)
+        record = self._insert(connection, type_name, record_id, data, _now())
+        self._audit(connection, "create", actor_id, provenance, None, record)
+        return self._public(connection, actor, record)
 
     def update(
         self, actor_id: str, type_name: str, record_id: str, changes: dict[str, Any],
         expected_version: int, provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        require_type(self.types, type_name)
         with self._transaction(write=True) as connection:
-            actor = self._actor(connection, actor_id)
-            before = self._get_authorized(connection, actor, type_name, record_id)
-            if not self._can_update(connection, actor, before):
-                raise WorldError(
-                    403, "permission_denied", "This actor is not allowed to update this record.",
-                    {"rule": self.types[type_name]["rules"]["update"]},
-                )
-            self._check_version(before, expected_version)
-            changes = validate_data(self.types, type_name, changes, partial=True, actor_id=actor_id)
-            if not changes:
-                raise WorldError(422, "empty_changes", "An update must include at least one field.")
-            data = validate_data(self.types, type_name, {**before["data"], **changes}, actor_id=actor_id)
-            proposed = {**before, "data": data}
-            self._authorize_fields(connection, actor, proposed, before)
-            if not self._can_update(connection, actor, proposed):
-                raise WorldError(
-                    403, "permission_denied", "This actor would not be allowed to update the record after this change.",
-                    {"rule": self.types[type_name]["rules"]["update"]},
-                )
-            self._validate_relationships(connection, actor, type_name, record_id, data, before)
-            provenance = self._provenance(connection, actor_id, "update", provenance)
-            connection.execute(
-                "UPDATE records SET data = ?, version = version + 1, updated_at = ? WHERE type = ? AND id = ?",
-                (_json(data), _now(), type_name, record_id),
+            return self._update(connection, self._actor(connection, actor_id), type_name, record_id, changes, expected_version, provenance)
+
+    def _update(
+        self, connection: sqlite3.Connection, actor: dict[str, Any], type_name: str, record_id: str,
+        changes: dict[str, Any], expected_version: int, provenance: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        actor_id = actor["id"]
+        require_type(self.types, type_name)
+        before = self._get_authorized(connection, actor, type_name, record_id)
+        if not self._can_update(connection, actor, before):
+            raise WorldError(
+                403, "permission_denied", "This actor is not allowed to update this record.",
+                {"rule": self.types[type_name]["rules"]["update"]},
             )
-            after = self._raw(connection, type_name, record_id)
-            self._audit(connection, "update", actor_id, provenance, before, after)
-            if type_name == self.definition.actor_type and record_id == actor_id:
-                actor = after
-            return self._public(connection, actor, after)
+        self._check_version(before, expected_version)
+        changes = validate_data(self.types, type_name, changes, partial=True, actor_id=actor_id)
+        if not changes:
+            raise WorldError(422, "empty_changes", "An update must include at least one field.")
+        data = validate_data(self.types, type_name, {**before["data"], **changes}, actor_id=actor_id)
+        proposed = {**before, "data": data}
+        self._authorize_fields(connection, actor, proposed, before)
+        if not self._can_update(connection, actor, proposed):
+            raise WorldError(
+                403, "permission_denied", "This actor would not be allowed to update the record after this change.",
+                {"rule": self.types[type_name]["rules"]["update"]},
+            )
+        self._validate_relationships(connection, actor, type_name, record_id, data, before)
+        provenance = self._provenance(connection, actor_id, "update", provenance)
+        connection.execute(
+            "UPDATE records SET data = ?, version = version + 1, updated_at = ? WHERE type = ? AND id = ?",
+            (_json(data), _now(), type_name, record_id),
+        )
+        after = self._raw(connection, type_name, record_id)
+        self._audit(connection, "update", actor_id, provenance, before, after)
+        if type_name == self.definition.actor_type and record_id == actor_id:
+            actor = after
+        return self._public(connection, actor, after)
 
     def delete(
         self, actor_id: str, type_name: str, record_id: str, expected_version: int,
         provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        with self._transaction(write=True) as connection:
+            return self._delete(connection, self._actor(connection, actor_id), type_name, record_id, expected_version, provenance)
+
+    def _delete(
+        self, connection: sqlite3.Connection, actor: dict[str, Any], type_name: str, record_id: str,
+        expected_version: int, provenance: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        actor_id = actor["id"]
         require_type(self.types, type_name)
+        before = self._get_authorized(connection, actor, type_name, record_id)
+        rule = self.types[type_name]["rules"]["delete"]
+        if not self._holds(connection, rule, actor, before, before):
+            raise WorldError(403, "permission_denied", "This actor is not allowed to delete this record.", {"rule": rule})
+        self._check_version(before, expected_version)
+        inbound = self._inbound(connection, type_name, record_id)
+        if inbound:
+            raise WorldError(409, "record_referenced", "Remove live relationships before deleting this record.", {"references": inbound})
+        self._check_constraints(connection, actor, before, before, "delete")
+        provenance = self._provenance(connection, actor_id, "delete", provenance)
+        now = _now()
+        connection.execute(
+            "UPDATE records SET version = version + 1, updated_at = ?, deleted_at = ? WHERE type = ? AND id = ?",
+            (now, now, type_name, record_id),
+        )
+        after = self._raw(connection, type_name, record_id, include_deleted=True)
+        self._audit(connection, "delete", actor_id, provenance, before, after)
+        return self._public(connection, actor, after)
+
+    def apply(
+        self, actor_id: str, steps: list[dict[str, Any]], provenance: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Make several changes as one. Either every step is saved or none is.
+
+        A step is {"create": TYPE, "data": {...}}, {"update": TYPE, "id": ID,
+        "changes": {...}, "expected_version": N}, or {"delete": TYPE, "id": ID,
+        "expected_version": N}. A create may add "as": NAME, and a later step
+        may then write "$NAME" where it needs that record's ID.
+        """
+        if not isinstance(steps, list) or not 1 <= len(steps) <= 50 or any(not isinstance(step, dict) for step in steps):
+            raise WorldError(400, "invalid_steps", "steps must be a list of 1 to 50 objects.", {"expected": APPLY_HELP})
         with self._transaction(write=True) as connection:
             actor = self._actor(connection, actor_id)
-            before = self._get_authorized(connection, actor, type_name, record_id)
-            rule = self.types[type_name]["rules"]["delete"]
-            if not self._holds(connection, rule, actor, before, before):
-                raise WorldError(403, "permission_denied", "This actor is not allowed to delete this record.", {"rule": rule})
-            self._check_version(before, expected_version)
-            inbound = self._inbound(connection, type_name, record_id)
-            if inbound:
-                raise WorldError(409, "record_referenced", "Remove live relationships before deleting this record.", {"references": inbound})
-            self._check_constraints(connection, actor, before, before, "delete")
-            provenance = self._provenance(connection, actor_id, "delete", provenance)
-            now = _now()
-            connection.execute(
-                "UPDATE records SET version = version + 1, updated_at = ?, deleted_at = ? WHERE type = ? AND id = ?",
-                (now, now, type_name, record_id),
-            )
-            after = self._raw(connection, type_name, record_id, include_deleted=True)
-            self._audit(connection, "delete", actor_id, provenance, before, after)
-            return self._public(connection, actor, after)
+            names: dict[str, str] = {}
+
+            def resolve(value: Any) -> Any:
+                if isinstance(value, str) and value.startswith("$") and value != "$actor":
+                    if value[1:] not in names:
+                        raise WorldError(422, "unknown_name", f"No earlier step is named {value[1:]}.", {"names": list(names)})
+                    return names[value[1:]]
+                if isinstance(value, list):
+                    return [resolve(item) for item in value]
+                return value
+
+            results = []
+            for index, step in enumerate(steps):
+                actor = self._actor(connection, actor_id)  # an earlier step may have changed the actor's own record
+                operations = [key for key in ("create", "update", "delete") if key in step]
+                try:
+                    if len(operations) != 1:
+                        raise WorldError(400, "invalid_steps", "Each step is one create, update, or delete.", {"expected": APPLY_HELP})
+                    operation, type_name = operations[0], step[operations[0]]
+                    if operation == "create":
+                        fields = step.get("data")
+                        if not isinstance(fields, dict):
+                            raise WorldError(422, "invalid_data", 'A create step gives the record\'s fields under "data".', {"expected": APPLY_HELP})
+                        record = self._create(connection, actor, type_name, {key: resolve(value) for key, value in fields.items()}, provenance)
+                        name = step.get("as")
+                        if name is not None:
+                            if not isinstance(name, str) or not name.isidentifier() or name == "actor" or name in names:
+                                raise WorldError(422, "invalid_name", '"as" must be a new name made of letters, digits, and underscores.')
+                            names[name] = record["id"]
+                    elif operation == "update":
+                        fields = step.get("changes")
+                        if not isinstance(fields, dict):
+                            raise WorldError(422, "invalid_data", 'An update step gives the changed fields under "changes".', {"expected": APPLY_HELP})
+                        record = self._update(connection, actor, type_name, resolve(step.get("id")),
+                                              {key: resolve(value) for key, value in fields.items()}, step.get("expected_version"), provenance)
+                    else:
+                        record = self._delete(connection, actor, type_name, resolve(step.get("id")), step.get("expected_version"), provenance)
+                except WorldError as error:
+                    # Leaving the transaction by an exception undoes the earlier steps.
+                    error.details = {**error.details, "step": index, "saved": False}
+                    error.message = f"Step {index} was refused, so nothing was saved. {error.message}"
+                    raise
+                results.append(record)
+            return results
 
     def history(
         self, actor_id: str, type_name: str, record_id: str, *, agent: str | None = None,

@@ -97,6 +97,7 @@ measurement shows it is the limit.
   `lab`. A definition is data. Rules are expressions the engine evaluates and
   shows to clients, so never enforce a rule in Python. Extend the language in
   `world/rules.py` if a rule cannot be written. See `docs/writing-a-world.md`. `python3 -m bench --domain lab` selects the lab's tasks.
+- `bench/agents/` holds the commands for agents other than the default Codex.
 - `bench/` measures discovery cost, round trips, and recovery. Run
   `python3 -m bench` after any protocol change and compare with the figures in
   `docs/second-experiment.md`. `python3 -m bench agent` spends the user's model

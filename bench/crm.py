@@ -51,13 +51,12 @@ def solve_win(client):
     client.get("/api/world")
     opportunity = _find(client, "Opportunity", "name", "renewal")
     today = opportunity["updated_at"][:10]
-    client.call("PATCH", f"/api/records/Opportunity/{opportunity['id']}", {
-        "changes": {"stage": "won", "close_date": today}, "expected_version": opportunity["version"],
-        "reason": "Northwind signed the renewal."})
-    client.call("POST", "/api/records/Interaction", {"data": {
-        "kind": "note", "summary": "Northwind signed the renewal for $48,000.", "occurred_on": today,
-        "organization": opportunity["data"]["organization"], "opportunity": opportunity["id"]},
-        "reason": "Recording why the renewal was won."})
+    client.call("POST", "/api/changes", {"reason": "Northwind signed the renewal.", "steps": [
+        {"update": "Opportunity", "id": opportunity["id"], "changes": {"stage": "won", "close_date": today},
+         "expected_version": opportunity["version"]},
+        {"create": "Interaction", "data": {
+            "kind": "note", "summary": "Northwind signed the renewal for $48,000.", "occurred_on": today,
+            "organization": opportunity["data"]["organization"], "opportunity": opportunity["id"]}}]})
     return "Marked the renewal as won and added a note."
 
 
@@ -89,12 +88,12 @@ def check_lose(store, answer):
 def solve_contact(client):
     client.get("/api/world")
     opportunity = _find(client, "Opportunity", "name", "Harbor")
-    _, body = client.call("POST", "/api/records/Contact", {"data": {
-        "name": "Jo Park", "job_title": "Operations Manager", "email": "jo@harbor.example",
-        "organization": opportunity["data"]["organization"]}, "reason": "New contact at Harbor Logistics."})
-    client.call("PATCH", f"/api/records/Opportunity/{opportunity['id']}", {
-        "changes": {"primary_contact": body["record"]["id"]}, "expected_version": opportunity["version"],
-        "reason": "Jo Park is now the main contact for the pilot."})
+    client.call("POST", "/api/changes", {"reason": "Jo Park is the new main contact for the pilot.", "steps": [
+        {"create": "Contact", "as": "jo", "data": {
+            "name": "Jo Park", "job_title": "Operations Manager", "email": "jo@harbor.example",
+            "organization": opportunity["data"]["organization"]}},
+        {"update": "Opportunity", "id": opportunity["id"], "changes": {"primary_contact": "$jo"},
+         "expected_version": opportunity["version"]}]})
     return "Added Jo Park and made them the pilot's primary contact."
 
 
