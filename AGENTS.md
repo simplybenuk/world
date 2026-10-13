@@ -24,6 +24,13 @@ The audit names software as well as people. A person issues a token to an agent,
 and the audit records its reads and changes as `person via agent`. Give every
 agent its own token. Do not let one work with a person's own token.
 
+### A public demo comes after the evidence
+
+Ben, 2026-10-13. Once the measurements give confidence that World is onto
+something, stand up a demo application and let people use it. Until then the
+work is experiments and improvements against the two aims above. Do not start
+building or hosting a public demo before Ben says the evidence is enough.
+
 ### World is the system of record, and provides no LLM
 
 Ben, 2026-10-08. World holds records, rules, and history in the simplest and
@@ -48,8 +55,10 @@ fits on a USB key.
 - The control is EspoCRM, chosen by Claude on 2026-10-09 because each user gets
   an API key and a role, so the tasks run as the same people with the same
   limits. `bench/control/` starts and seeds it. See `docs/second-experiment.md`.
-- The agent comparison is still to run: `python3 -m bench agent --repeat 3`, then
-  the same with `--control`. It spends the user's model account, so ask first.
+- The first agent comparison ran on 2026-10-12 and was level on success, calls,
+  and time. World's lead is in size and in refusing wrong requests. The agent
+  already knew EspoCRM's API, so the next comparison needs a domain it cannot
+  know. Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.
 

@@ -160,13 +160,44 @@ docker compose -f bench/control/compose.yaml up -d
 python3 -m bench control
 ```
 
-The agent run against the control has not been done yet. When it has, both
-sides get the same five prompts and the same agent:
+Both sides get the same five prompts and the same agent:
 
 ```sh
 python3 -m bench agent --repeat 3
 python3 -m bench agent --control --repeat 3
 ```
+
+### The agent comparison
+
+Run on 2026-10-12 with `codex exec`, three runs of each task on each side.
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Task runs correct | 15 of 15 | 15 of 15 |
+| Calls | 51 | 50 |
+| Rejected calls | 0 | 3 |
+| Agent time, all 15 runs | 281 s | 282 s |
+| Bytes read, median run | 8,058 | 3,289 |
+| Bytes read, largest run | 8,699 | 747,729 |
+
+On success, calls, and time the two are level. The agent's own thinking takes
+12 to 30 seconds a task, so a server that answers in 5 ms and one that answers
+in 50 ms look the same.
+
+The agent already knew EspoCRM. It went straight to the right paths, filters,
+and field names without reading any description, which is why its usual run
+reads less than half of what a World run reads. World was new to it, and it
+matched that from a 6.8 KB description. When the agent was unsure about
+EspoCRM once, it fetched the 248 KB metadata three times in one task.
+
+All three rejected calls on EspoCRM are the closed opportunity. The agent tried
+the change and was refused. On World it read that the record could not be
+updated and did not try.
+
+This control is the easy case for the other side. A widely used product with a
+public API is in the model's training. A company's own system is not. The next
+comparison should give EspoCRM a custom entity and custom fields that the agent
+cannot know, and give World the same.
 
 ### Size
 
@@ -249,9 +280,8 @@ explains the guessed ID better than World does.
 
 ## Next
 
-1. Run the agent against both sides, three times per task, with the commands in
-   "The control" above. The control is installed and its scripted figures are
-   in. Only the agent run is missing.
+1. Repeat the agent comparison on a domain the model cannot know: a custom
+   entity and custom fields in EspoCRM, and the same in a World.
 2. Reduce the description further. Rule text is 23% of it and field
    definitions 38%. Splitting it across calls would save bytes and cost a round
    trip, and a round trip costs an agent more. Any cut that changes content
