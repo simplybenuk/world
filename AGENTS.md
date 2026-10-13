@@ -55,10 +55,12 @@ fits on a USB key.
 - The control is EspoCRM, chosen by Claude on 2026-10-09 because each user gets
   an API key and a role, so the tasks run as the same people with the same
   limits. `bench/control/` starts and seeds it. See `docs/second-experiment.md`.
-- The first agent comparison ran on 2026-10-12 and was level on success, calls,
-  and time. World's lead is in size and in refusing wrong requests. The agent
-  already knew EspoCRM's API, so the next comparison needs a domain it cannot
-  know. Agent runs spend the user's model account, so ask first.
+- On the CRM, which the agent already knew, World and EspoCRM were level on
+  success, calls, and time (2026-10-12). On a made-up calibration lab, both got
+  every task right and World used half the calls and 58% of the time
+  (2026-10-13). World's advantage is in domains an agent has not seen, in size,
+  and in refusing wrong requests. See `docs/third-experiment.md`.
+- Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.
 
@@ -79,8 +81,8 @@ measurement shows it is the limit.
 
 - `world/` is the engine: storage, validation, versions, history, and the HTTP
   protocol. It must not name a type, role, or rule from any one domain.
-- `worlds/` holds one definition per domain. `team` is the default; `crm` is the
-  second.
+- `worlds/` holds one definition per domain: `team` (the default), `crm`, and
+  `lab`. `python3 -m bench --domain lab` selects the lab's tasks.
 - `bench/` measures discovery cost, round trips, and recovery. Run
   `python3 -m bench` after any protocol change and compare with the figures in
   `docs/second-experiment.md`. `python3 -m bench agent` spends the user's model

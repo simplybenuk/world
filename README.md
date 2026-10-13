@@ -385,6 +385,10 @@ The engine now runs two worlds, a team and a small CRM, each written as a
 definition in `worlds/`. `python3 -m bench` measures what an agent reads and how
 many calls it makes to complete a task. [Read the second experiment](docs/second-experiment.md).
 
+[The third experiment](docs/third-experiment.md) compares World with EspoCRM on a
+domain the agent has never seen. Both get every task right, and on World the
+agent uses half the calls and 58% of the time.
+
 There is no settled architecture or language yet.
 
 The first goal is not to build a production framework.

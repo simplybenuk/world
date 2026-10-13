@@ -280,8 +280,8 @@ explains the guessed ID better than World does.
 
 ## Next
 
-1. Repeat the agent comparison on a domain the model cannot know: a custom
-   entity and custom fields in EspoCRM, and the same in a World.
+1. Done. See [the third experiment](third-experiment.md), where the agent meets
+   a domain it cannot know.
 2. Reduce the description further. Rule text is 23% of it and field
    definitions 38%. Splitting it across calls would save bytes and cost a round
    trip, and a round trip costs an agent more. Any cut that changes content

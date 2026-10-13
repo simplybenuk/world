@@ -18,13 +18,27 @@ import sys
 import tempfile
 import time
 
-from . import crm
+from . import crm, lab
 from .harness import running
 from world.store import WorldStore
 import worlds
 
+DOMAINS = {"crm": crm, "lab": lab}
+CONTROLS = {"crm": "espocrm", "lab": "lab"}
+domain = crm  # set from --domain
+
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "artifacts" / "bench"
+
+
+def admin():
+    """The world's first seeded actor, who can read everything."""
+    return worlds.load(domain.WORLD).actors[0]
+
+
+def control_module():
+    from importlib import import_module
+    return import_module(f"bench.control.{CONTROLS[domain.WORLD]}")
 
 
 def tokens(size):
@@ -40,22 +54,21 @@ def source_size(*paths):
 
 def measure_size():
     with tempfile.TemporaryDirectory() as directory:
-        store = WorldStore(Path(directory) / "world.sqlite3", worlds.load("crm"))
-        records = len(store.list_records("ben"))
+        store = WorldStore(Path(directory) / "world.sqlite3", worlds.load(domain.WORLD))
+        records = len(store.list_records(admin()))
         store.close()
         database = sum(file.stat().st_size for file in Path(directory).iterdir())
     return {
         "engine and HTTP protocol (world/)": source_size("world"),
-        "CRM definition (worlds/crm.py)": source_size("worlds/crm.py"),
-        "team definition (worlds/team.py)": source_size("worlds/team.py"),
-        f"seeded CRM database ({records} records with history)": database,
+        f"{domain.WORLD} definition (worlds/{domain.WORLD}.py)": source_size(f"worlds/{domain.WORLD}.py"),
+        f"seeded database ({records} records with history)": database,
         "reference client, not part of World (client/, client_gateway/)": source_size("client", "client_gateway"),
     }
 
 
 def measure_discovery():
     rows = []
-    with running() as world:
+    with running(domain.WORLD) as world:
         for actor in world.store.definition.actors:
             client = world.client(actor)
             sizes = []
@@ -70,8 +83,8 @@ def measure_discovery():
 
 def measure_tasks():
     rows = []
-    for task in crm.TASKS:
-        with running() as world:
+    for task in domain.TASKS:
+        with running(domain.WORLD) as world:
             started = time.perf_counter()
             answer = task.solve(world.client(task.actor))
             seconds = time.perf_counter() - started
@@ -90,7 +103,7 @@ def runtime_size():
 def resident_memory():
     """Memory held by an idle World server with the seeded CRM, in bytes."""
     with tempfile.TemporaryDirectory() as directory:
-        process = subprocess.Popen([sys.executable, "-m", "world.server", "--world", "crm", "--data-dir", directory, "--port", "0"],
+        process = subprocess.Popen([sys.executable, "-m", "world.server", "--world", domain.WORLD, "--data-dir", directory, "--port", "0"],
                                    cwd=ROOT, stderr=subprocess.DEVNULL)
         try:
             time.sleep(1.5)
@@ -107,7 +120,7 @@ def docker(*arguments):
 
 def control(args):
     """Size, self-description, and scripted tasks for EspoCRM, to set beside the World report."""
-    from .control import espocrm
+    espocrm = control_module()
     compose = ["compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")]
     users = espocrm.setup()
     ids = espocrm.reset(users)
@@ -127,7 +140,7 @@ def control(args):
         "seeded database directory": measured("db", "/var/lib/mysql"),
     }
     world_side = {
-        "World engine, protocol, and CRM definition": source_size("world", "worlds/crm.py", "worlds/__init__.py"),
+        f"World engine, protocol, and {domain.WORLD} definition": source_size("world", f"worlds/{domain.WORLD}.py", "worlds/__init__.py"),
         "Python interpreter and standard library": runtime_size(),
         "World server, idle memory": resident_memory(),
     }
@@ -147,7 +160,7 @@ def control(args):
         tasks.append({"task": task.id, **meter.usage(), "milliseconds": round(seconds * 1000, 1),
                       "failures": espocrm.checks(ids, started_at)[task.id](answer)})
         meter.close()
-    mistakes = espocrm.measure_faults(users)
+    mistakes = espocrm.measure_faults(users) if hasattr(espocrm, "measure_faults") else []
     print(f"## Control size: EspoCRM {version}\n")
     print(table(["Part", "Bytes"], [(name, f"{value:,}") for name, value in size.items()]))
     print("\nIdle memory: " + ", ".join(f"{name} {used}" for name, used in sorted(memory.items())))
@@ -165,14 +178,14 @@ def control(args):
         for row in mistakes]))
     print(f"\n{sum(row['status'] >= 300 for row in mistakes)} of {len(mistakes)} rejected, "
           f"{sum(bool(row['harm']) for row in mistakes)} accepted with a wrong result.")
-    save("control.json", {"version": version, "size": size, "memory": memory, "world": world_side, "discovery": discovery,
+    save(f"control-{domain.WORLD}.json", {"version": version, "size": size, "memory": memory, "world": world_side, "discovery": discovery,
                           "tasks": tasks, "mistakes": mistakes})
 
 
 def measure_recovery():
     rows = []
-    for fault in crm.FAULTS:
-        with running() as world:
+    for fault in domain.FAULTS:
+        with running(domain.WORLD) as world:
             client = world.client(fault.actor)
             status, body = client.call(fault.method, fault.path, fault.body)
             error = body.get("error", {})
@@ -195,7 +208,7 @@ def table(headers, rows):
 
 
 def report(args):
-    crm.SEEDED.update(seeded_ids())
+    domain.SEEDED.update(seeded_ids())
     result = {"size": measure_size(), "discovery": measure_discovery(), "tasks": measure_tasks(), "recovery": measure_recovery()}
     print("## Size\n")
     print(table(["Part", "Bytes"], [(name, f"{size:,}") for name, size in result["size"].items()]))
@@ -213,12 +226,12 @@ def report(args):
          row["retry_status"] or "no retry possible", "yes" if row["recovered_in_one_call"] else "no") for row in result["recovery"]]))
     recovered = sum(row["recovered_in_one_call"] for row in result["recovery"])
     print(f"\n{recovered} of {len(result['recovery'])} mistakes can be corrected in one call from the error's details alone.")
-    save("report.json", result)
+    save(f"report-{domain.WORLD}.json", result)
 
 
 def seeded_ids():
-    with running() as world:
-        return {name: {record["id"] for record in world.store.list_records("ben", name)} for name in world.store.types}
+    with running(domain.WORLD) as world:
+        return {name: {record["id"] for record in world.store.list_records(admin(), name)} for name in world.store.types}
 
 
 def save(name, value):
@@ -227,9 +240,9 @@ def save(name, value):
     print(f"\nSaved to {(OUTPUT / name).relative_to(ROOT)}")
 
 
-PROMPT = """A record service is running at {url}. It speaks JSON over HTTP.
+PROMPT = """A record service is running at {url}. Its JSON API is under {url}/api.
 Send the header "Authorization: Bearer {token}" with every request.
-Start with GET {url}/api/world. You have no other documentation.
+GET {url}/api/world describes it. You have no other documentation.
 Use curl. Do not read or write local files.
 
 {task}
@@ -246,9 +259,9 @@ def codex_command(workspace, answer):
     ]
 
 
-CONTROL_PROMPT = """A CRM is running at {url}. It is EspoCRM, and its JSON API is under {url}/api/v1.
+CONTROL_PROMPT = """A record service is running at {url}. It is EspoCRM, and its JSON API is under {url}/api/v1.
 Send the header "X-Api-Key: {token}" with every request.
-You have no other documentation.
+GET {url}/api/v1/Metadata describes it. You have no other documentation.
 Use curl. Do not read or write local files.
 
 {task}
@@ -259,16 +272,16 @@ Finish with a short plain-text answer: what you found or changed, or why you cou
 @contextmanager
 def world_target(task, label):
     """A fresh World for one task: its prompt, its meter, and its checker."""
-    with running() as world:
+    with running(domain.WORLD) as world:
         def finish(answer):
             changed = [(row["type"], row["id"]) for row in changed_records(world.store)]
-            return task.check(world.store, answer), all(crm._reason_given(world.store, *record) for record in changed)
+            return task.check(world.store, answer), all(reason_given(world.store, *record) for record in changed)
         yield PROMPT.format(url=world.url, token=world.agent_token(task.actor, label), task=task.prompt), world, finish
 
 
 @contextmanager
 def control_target(task, users):
-    from .control import espocrm
+    espocrm = control_module()
     ids = espocrm.reset(users)
     started, meter = espocrm.now(), espocrm.Meter()
     try:
@@ -279,12 +292,11 @@ def control_target(task, users):
 
 
 def agent(args):
-    crm.SEEDED.update(seeded_ids())
-    tasks = [task for task in crm.TASKS if not args.task or task.id in args.task]
+    domain.SEEDED.update(seeded_ids())
+    tasks = [task for task in domain.TASKS if not args.task or task.id in args.task]
     users = None
     if args.control:
-        from .control import espocrm
-        users = espocrm.setup()
+        users = control_module().setup()
     rows = []
     for run in range(1, args.repeat + 1):
         for task in tasks:
@@ -308,7 +320,7 @@ def agent(args):
                 rows.append({
                     "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
                     "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
-                    "audit": [] if args.control else [line for line in meter.store.audit("ben", limit=10000) if "  system  " not in line],
+                    "audit": [] if args.control else [line for line in meter.store.audit(admin(), limit=10000) if "  system  " not in line],
                 })
                 print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
                       f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
@@ -319,13 +331,18 @@ def agent(args):
          f"{tokens(row['bytes_read']):,}", row["seconds"], reasons[row["own_reasons"]]) for row in rows]))
     print(f"\n{sum(row['correct'] for row in rows)} of {len(rows)} task runs correct, {sum(row['calls'] for row in rows)} calls, "
           f"{sum(row['rejected'] for row in rows)} rejected.")
-    save(f"agent-{'control-' if args.control else ''}{args.label}.json", rows)
+    save(f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json", rows)
+
+
+def reason_given(store, type_name, record_id):
+    """Whether the last change carries the agent's own reason, not the server's default."""
+    return store.history(admin(), type_name, record_id)[-1]["reason"] != "Changed through the World client"
 
 
 def changed_records(store):
     """Records an actor other than the seed has written."""
-    return [record for record in store.list_records("ben")
-            if any(event["actor"] != "system" for event in store.history("ben", record["type"], record["id"]))]
+    return [record for record in store.list_records(admin())
+            if any(event["actor"] != "system" for event in store.history(admin(), record["type"], record["id"]))]
 
 
 def main():
@@ -337,10 +354,14 @@ def main():
                         "environment. Its answer is that file, or else its standard output. Default: codex exec")
     runner.add_argument("--control", action="store_true", help="Run against EspoCRM instead of World")
     runner.add_argument("--repeat", type=int, default=1, help="Run every task this many times")
-    runner.add_argument("--task", action="append", choices=[task.id for task in crm.TASKS], help="Run only this task; repeatable")
+    runner.add_argument("--task", action="append", help="Run only this task; repeatable")
     runner.add_argument("--label", default="codex", help="Name for the saved results file")
     runner.add_argument("--timeout", type=int, default=600)
+    for command in (parser, *commands.choices.values()):
+        command.add_argument("--domain", choices=list(DOMAINS), default=argparse.SUPPRESS, help="Which world and tasks to use; default crm")
     args = parser.parse_args()
+    global domain
+    domain = DOMAINS[getattr(args, "domain", "crm")]
     {"agent": agent, "control": control}.get(args.mode, report)(args)
 
 

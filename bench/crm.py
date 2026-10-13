@@ -4,6 +4,7 @@ so the same tasks can be given to an agent working against another CRM."""
 from dataclasses import dataclass
 from typing import Callable
 
+WORLD = "crm"
 OPEN_STAGES = ["lead", "qualified", "proposal", "negotiation"]
 REFUSALS = ("cannot", "can't", "can’t", "could not", "couldn't", "unable", "not allowed", "not permitted", "permission", "closed", "admin")
 
