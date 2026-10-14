@@ -1,0 +1,315 @@
+[
+  {
+    "task": "pipeline",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 3,
+    "bytes_read": 8238,
+    "seconds": 24.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        6659
+      ],
+      [
+        "GET",
+        "/api/records/Opportunity",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/Opportunity",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/records?type=Opportunity",
+        200,
+        1303
+      ]
+    ],
+    "answer": "Your 3 open opportunities total $85,000 USD.",
+    "own_reasons": true
+  },
+  {
+    "task": "win",
+    "correct": true,
+    "failures": [],
+    "calls": 13,
+    "rejected": 9,
+    "bytes_read": 16043,
+    "seconds": 62.1,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        6659
+      ],
+      [
+        "GET",
+        "/api/records/Opportunity",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/Opportunity",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/types/Opportunity/records",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/records",
+        200,
+        7595
+      ],
+      [
+        "PATCH",
+        "/api/records/northwind-renewal",
+        404,
+        92
+      ],
+      [
+        "PUT",
+        "/api/records/northwind-renewal",
+        405,
+        85
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/northwind-renewal",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/northwind-renewal",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/northwind-renewal",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/northwind-renewal",
+        200,
+        438
+      ],
+      [
+        "POST",
+        "/api/records/Interaction",
+        201,
+        509
+      ]
+    ],
+    "answer": "Marked Northwind\u2019s annual renewal as won for $48,000, with today\u2019s close date, October 8, 2026. Added a note under Priya explaining that Northwind signed the renewal today.",
+    "own_reasons": false
+  },
+  {
+    "task": "lose",
+    "correct": true,
+    "failures": [],
+    "calls": 11,
+    "rejected": 8,
+    "bytes_read": 9149,
+    "seconds": 104.6,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        6659
+      ],
+      [
+        "GET",
+        "/api/records/Opportunity",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/types/Opportunity/records",
+        404,
+        92
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        1303
+      ],
+      [
+        "POST",
+        "/api/update",
+        404,
+        92
+      ],
+      [
+        "PATCH",
+        "/api/records/harbor-pilot",
+        404,
+        92
+      ],
+      [
+        "POST",
+        "/api/mutate",
+        404,
+        92
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        200,
+        437
+      ]
+    ],
+    "answer": "Marked the Harbor Logistics pilot as lost, with the reason \u201cBudget frozen.\u201d",
+    "own_reasons": false
+  },
+  {
+    "task": "contact",
+    "correct": true,
+    "failures": [],
+    "calls": 11,
+    "rejected": 7,
+    "bytes_read": 15758,
+    "seconds": 61.3,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        6659
+      ],
+      [
+        "GET",
+        "/api/records/Organization",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api",
+        404,
+        92
+      ],
+      [
+        "GET",
+        "/api/records",
+        200,
+        7595
+      ],
+      [
+        "POST",
+        "/api/records",
+        404,
+        92
+      ],
+      [
+        "POST",
+        "/api/records/create",
+        400,
+        101
+      ],
+      [
+        "POST",
+        "/api/records/Contact",
+        201,
+        379
+      ],
+      [
+        "PATCH",
+        "/api/records/harbor-pilot",
+        404,
+        92
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        422,
+        99
+      ],
+      [
+        "PATCH",
+        "/api/records/Opportunity/harbor-pilot",
+        200,
+        458
+      ]
+    ],
+    "answer": "Added Jo Park at Harbor Logistics as Operations Manager, with email jo@harbor.example, and made them the primary contact on the Harbor Logistics pilot opportunity.",
+    "own_reasons": false
+  },
+  {
+    "task": "closed",
+    "correct": false,
+    "failures": [
+      "The answer does not say the change was not possible."
+    ],
+    "calls": 1,
+    "rejected": 0,
+    "bytes_read": 6653,
+    "seconds": 28.6,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        6653
+      ]
+    ],
+    "answer": "",
+    "own_reasons": true
+  }
+]

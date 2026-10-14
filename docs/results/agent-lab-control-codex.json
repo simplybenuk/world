@@ -1,0 +1,911 @@
+[
+  {
+    "task": "count",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 766265,
+    "seconds": 34.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined&maxSize=200",
+        200,
+        1289
+      ]
+    ],
+    "answer": "There are 3 quarantined instruments at Leeds: GAU-102, PIP-031, and BAL-020.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 576389,
+    "seconds": 44.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=100&textFilter=BAL-014",
+        200,
+        538
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=100&textFilter=BAL-014",
+        200,
+        443
+      ],
+      [
+        "GET",
+        "/api/v1/User?maxSize=100&textFilter=Kofi",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/User/6acdbec696bf251ee",
+        200,
+        989
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        666
+      ]
+    ],
+    "answer": "Recorded BAL-014\u2019s calibration by Kofi for today, 13 October 2026: adjusted, with drift of 180 ppm.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 10,
+    "rejected": 0,
+    "bytes_read": 583370,
+    "seconds": 43.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=100",
+        200,
+        3823
+      ],
+      [
+        "GET",
+        "/api/v1/User?maxSize=100",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=100",
+        200,
+        2092
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?maxSize=100",
+        200,
+        1688
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        655
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        785
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acdc128622ac6378",
+        200,
+        574
+      ]
+    ],
+    "answer": "Recorded TH-221\u2019s failed calibration for today, 13 October 2026, with 950 ppm drift under Kofi. Created a linked major deviation with open disposition and quarantined the instrument.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 767390,
+    "seconds": 46.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=PIP-007",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc16053fd83a0e/deviations",
+        200,
+        564
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acdc162e1a45bc90",
+        200,
+        704
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation/6acdc162e1a45bc90",
+        200,
+        704
+      ]
+    ],
+    "answer": "Closed PIP-007\u2019s deviation, \u201cTip ejector sticks on every tenth use,\u201d as use-as-is, dated 2026-10-13. Verified the change was recorded under Kofi.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 766548,
+    "seconds": 40.0,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=GAU-102",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc19a04c6ded17/calibrations",
+        200,
+        535
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc19a04c6ded17/deviations",
+        200,
+        595
+      ]
+    ],
+    "answer": "GAU-102 is quarantined. Its latest calibration failed on 5 October 2026, and a major deviation remains open: it reads 2% high above 6 bar. I left it quarantined pending resolution and clearance for service.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "count",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 766265,
+    "seconds": 36.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined&maxSize=200",
+        200,
+        1289
+      ]
+    ],
+    "answer": "3 instruments at Leeds are quarantined: BAL-020, GAU-102, and PIP-031.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 9,
+    "rejected": 0,
+    "bytes_read": 767630,
+    "seconds": 50.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=BAL-014",
+        200,
+        443
+      ],
+      [
+        "GET",
+        "/api/v1/User?where[0][type]=contains&where[0][attribute]=name&where[0][value]=Kofi",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/User/6acdbec696bf251ee",
+        200,
+        989
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?where[0][type]=equals&where[0][attribute]=instrumentId&where[0][value]=6acdc1f9cb0539302",
+        200,
+        538
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        663
+      ]
+    ],
+    "answer": "Recorded BAL-014\u2019s calibration by Kofi for today, 13 October 2026: adjusted, with drift of 180 ppm.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 9,
+    "rejected": 0,
+    "bytes_read": 767465,
+    "seconds": 48.9,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/User?where[0][type]=contains&where[0][attribute]=name&where[0][value]=Kofi",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=TH-221",
+        200,
+        446
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        658
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        790
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acdc2377a1959bcf",
+        200,
+        574
+      ]
+    ],
+    "answer": "Recorded TH-221\u2019s failed calibration for today, 13 October 2026, with 950 ppm drift under Kofi. Created a linked major deviation with open disposition and set the instrument to quarantined.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 576146,
+    "seconds": 48.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=PIP-007",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc274bf237d260/deviations",
+        200,
+        564
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acdc2775eb682eba",
+        200,
+        704
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation/6acdc2775eb682eba",
+        200,
+        704
+      ]
+    ],
+    "answer": "Closed PIP-007\u2019s deviation, \u201cTip ejector sticks on every tenth use,\u201d as use-as-is, dated 2026-10-13. Verified the change was recorded under Kofi.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 1,
+    "bytes_read": 766629,
+    "seconds": 56.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=GAU-102",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc2b07e603491d/calibrations",
+        200,
+        535
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc2b07e603491d/deviations",
+        200,
+        595
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acdc2b07e603491d",
+        400,
+        81
+      ]
+    ],
+    "answer": "GAU-102 remains quarantined. The service rejected its return because it has an open major deviation: it reads 2% high above 6 bar. Its latest calibration failed on 2026-10-05. No records were changed.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "count",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 766265,
+    "seconds": 28.5,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined&maxSize=200",
+        200,
+        1289
+      ]
+    ],
+    "answer": "There are 3 quarantined instruments at Leeds: GAU-102, PIP-031, and BAL-020.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 9,
+    "rejected": 0,
+    "bytes_read": 767632,
+    "seconds": 47.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/User?where[0][type]=contains&where[0][attribute]=name&where[0][value]=Kofi",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=BAL-014",
+        200,
+        443
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?where[0][type]=equals&where[0][attribute]=instrumentId&where[0][value]=6acdc318e7d659f9f",
+        200,
+        538
+      ],
+      [
+        "GET",
+        "/api/v1/User/6acdbec696bf251ee",
+        200,
+        989
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        665
+      ]
+    ],
+    "answer": "Recorded BAL-014\u2019s calibration for today, 2026-10-13, under Kofi: adjusted, with drift of 180 ppm.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 10,
+    "rejected": 0,
+    "bytes_read": 767532,
+    "seconds": 63.4,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/User?where[0][type]=startsWith&where[0][attribute]=firstName&where[0][value]=Kofi",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=TH-221",
+        200,
+        446
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc3540de461dfb/calibrations",
+        200,
+        21
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        673
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        821
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acdc3540de461dfb",
+        200,
+        574
+      ]
+    ],
+    "answer": "Recorded TH-221\u2019s failed calibration for today, 13 October 2026, with 950 ppm drift. Created a linked major deviation with open disposition and set the instrument to quarantined.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 768072,
+    "seconds": 46.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?maxSize=100",
+        200,
+        1688
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acdc3a23c6f07aef",
+        200,
+        704
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation/6acdc3a23c6f07aef",
+        200,
+        704
+      ]
+    ],
+    "answer": "Closed PIP-007\u2019s deviation, \u201cTip ejector sticks on every tenth use,\u201d as use-as-is, dated 2026-10-13. Verified the change was recorded under Kofi.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 769929,
+    "seconds": 43.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=100",
+        200,
+        3823
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        191244
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc3d94fe6ab636/deviations?maxSize=100",
+        200,
+        595
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acdc3d94fe6ab636/calibrations?maxSize=100",
+        200,
+        535
+      ]
+    ],
+    "answer": "GAU-102 remains quarantined. Its October 5 calibration failed, and an open major deviation reports readings 2% high above 6 bar. I could not return it to service without evidence that these issues were resolved.",
+    "own_reasons": null,
+    "audit": []
+  }
+]

@@ -1,0 +1,527 @@
+[
+  {
+    "task": "pipeline",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 2435,
+    "seconds": 12.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/User?maxSize=100",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=200",
+        200,
+        2414
+      ]
+    ],
+    "answer": "Priya, your 3 open opportunities total USD 85,000.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "win",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 3289,
+    "seconds": 16.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Northwind",
+        200,
+        1625
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5bdd1ee4cb3e6",
+        200,
+        1089
+      ],
+      [
+        "POST",
+        "/api/v1/Note",
+        200,
+        575
+      ]
+    ],
+    "answer": "Marked Northwind annual renewal ($48,000) as Closed Won, set the close date to today, and added a note explaining that Northwind signed the renewal today.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "lose",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 1963,
+    "seconds": 13.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Harbor",
+        200,
+        809
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5c004bdab77c8",
+        200,
+        1154
+      ]
+    ],
+    "answer": "Marked Harbor Logistics pilot as Closed Lost and recorded that their budget was frozen, as reported by Priya.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "contact",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 6,
+    "rejected": 0,
+    "bytes_read": 16230,
+    "seconds": 31.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Account?maxSize=100",
+        200,
+        4098
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100",
+        200,
+        2414
+      ],
+      [
+        "GET",
+        "/api/v1/Contact?maxSize=100",
+        200,
+        6267
+      ],
+      [
+        "POST",
+        "/api/v1/Contact",
+        200,
+        1215
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5c20b11e58e27",
+        200,
+        1076
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5c20b11e58e27",
+        200,
+        1160
+      ]
+    ],
+    "answer": "Added Jo Park, Operations Manager, jo@harbor.example, at Harbor Logistics and made them the primary contact on \u201cHarbor Logistics pilot,\u201d replacing Mei Tanaka.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "closed",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 1,
+    "bytes_read": 1669,
+    "seconds": 16.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Alder",
+        200,
+        1594
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5c533cb6a5d6a",
+        403,
+        75
+      ]
+    ],
+    "answer": "The Alder Clinics staff training opportunity is Closed Won with an amount of $9,000. The CRM rejected the change to $9,500 because only an administrator can edit closed opportunities.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "pipeline",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 2435,
+    "seconds": 10.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/User?maxSize=100",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100",
+        200,
+        2414
+      ]
+    ],
+    "answer": "Priya, you own 3 open opportunities totaling $85,000 USD.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "win",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 3292,
+    "seconds": 23.9,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Northwind",
+        200,
+        1625
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5c904fc3d2b3f",
+        200,
+        1089
+      ],
+      [
+        "POST",
+        "/api/v1/Note",
+        200,
+        578
+      ]
+    ],
+    "answer": "Marked \u201cNorthwind annual renewal\u201d as Closed Won for $48,000, with today\u2019s close date. Added a note explaining that Northwind signed the annual renewal today, as reported by Priya.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "lose",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 4722,
+    "seconds": 14.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100",
+        200,
+        2414
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5cbb9fc965563",
+        200,
+        1154
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5cbb9fc965563",
+        200,
+        1154
+      ]
+    ],
+    "answer": "Marked the Harbor Logistics pilot as Closed Lost with 0% probability and recorded that their budget was frozen, as reported by Priya.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "contact",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 5302,
+    "seconds": 32.7,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Account?where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Harbor",
+        200,
+        1042
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?where%5B0%5D%5Btype%5D=equals&where%5B0%5D%5Battribute%5D=accountId&where%5B0%5D%5Bvalue%5D=6acd5cd8a9486f09a",
+        200,
+        809
+      ],
+      [
+        "POST",
+        "/api/v1/Contact",
+        200,
+        1215
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5cdc094fa4d08",
+        200,
+        1076
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5cdc094fa4d08",
+        200,
+        1160
+      ]
+    ],
+    "answer": "Added Jo Park, Operations Manager (jo@harbor.example), at Harbor Logistics and verified they are the primary contact on \u201cHarbor Logistics pilot.\u201d",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "closed",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 1,
+    "bytes_read": 1669,
+    "seconds": 14.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Alder",
+        200,
+        1594
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5d0fe45f7ba6f",
+        403,
+        75
+      ]
+    ],
+    "answer": "The Alder Clinics staff training opportunity is Closed Won with an amount of $9,000. I couldn\u2019t change it to $9,500 because only an administrator can edit closed opportunities.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "pipeline",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 2435,
+    "seconds": 13.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/User?maxSize=100",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=200",
+        200,
+        2414
+      ]
+    ],
+    "answer": "Priya, you own 3 open opportunities totaling USD 85,000.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "win",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 3299,
+    "seconds": 18.9,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Northwind",
+        200,
+        1625
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5d4d9183ba23f",
+        200,
+        1089
+      ],
+      [
+        "POST",
+        "/api/v1/Note",
+        200,
+        585
+      ]
+    ],
+    "answer": "Marked Northwind annual renewal ($48,000) as Closed Won with today\u2019s close date, October 12, 2026. Added a note explaining that Northwind signed the annual renewal today, as reported by Priya.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "lose",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 6,
+    "rejected": 0,
+    "bytes_read": 747729,
+    "seconds": 26.0,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100",
+        200,
+        2414
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        247673
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        247673
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        247673
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5d73ae10b1845",
+        200,
+        1148
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5d73ae10b1845",
+        200,
+        1148
+      ]
+    ],
+    "answer": "Marked Harbor Logistics pilot as Closed Lost with 0% probability and recorded that their budget was frozen, as reported by Priya.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "contact",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 6,
+    "rejected": 0,
+    "bytes_read": 16230,
+    "seconds": 23.0,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Account?maxSize=100",
+        200,
+        4098
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100",
+        200,
+        2414
+      ],
+      [
+        "GET",
+        "/api/v1/Contact?maxSize=100",
+        200,
+        6267
+      ],
+      [
+        "POST",
+        "/api/v1/Contact",
+        200,
+        1215
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5d9fd61c81bf5",
+        200,
+        1076
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5d9fd61c81bf5",
+        200,
+        1160
+      ]
+    ],
+    "answer": "Added Jo Park at Harbor Logistics as Operations Manager, with email jo@harbor.example, and made them the primary contact on \u201cHarbor Logistics pilot,\u201d replacing Mei Tanaka.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "closed",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 1,
+    "bytes_read": 2739,
+    "seconds": 15.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Opportunity?maxSize=100&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=Alder",
+        200,
+        1594
+      ],
+      [
+        "PUT",
+        "/api/v1/Opportunity/6acd5dca4e33f788e",
+        403,
+        75
+      ],
+      [
+        "GET",
+        "/api/v1/Opportunity/6acd5dca4e33f788e",
+        200,
+        1070
+      ]
+    ],
+    "answer": "Could not update Alder Clinics staff training: it is Closed Won, and only an administrator can change it. The amount remains USD 9,000.",
+    "own_reasons": null,
+    "audit": []
+  }
+]

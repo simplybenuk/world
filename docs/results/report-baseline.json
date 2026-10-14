@@ -1,0 +1,195 @@
+{
+  "size": {
+    "engine and HTTP protocol (world/)": 52619,
+    "CRM definition (worlds/crm.py)": 19941,
+    "team definition (worlds/team.py)": 13723,
+    "seeded CRM database (26 records with history)": 57344,
+    "reference client, not part of World (client/, client_gateway/)": 111862
+  },
+  "discovery": [
+    {
+      "actor": "ben",
+      "role": "admin",
+      "describe_bytes": 6573,
+      "all_records_bytes": 9671,
+      "records": 26
+    },
+    {
+      "actor": "priya",
+      "role": "rep",
+      "describe_bytes": 6659,
+      "all_records_bytes": 7595,
+      "records": 21
+    },
+    {
+      "actor": "tom",
+      "role": "rep",
+      "describe_bytes": 6653,
+      "all_records_bytes": 7031,
+      "records": 20
+    },
+    {
+      "actor": "nina",
+      "role": "viewer",
+      "describe_bytes": 6669,
+      "all_records_bytes": 9705,
+      "records": 26
+    }
+  ],
+  "tasks": [
+    {
+      "task": "pipeline",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 7962,
+      "failures": []
+    },
+    {
+      "task": "win",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 8009,
+      "failures": []
+    },
+    {
+      "task": "lose",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 7527,
+      "failures": []
+    },
+    {
+      "task": "contact",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 7927,
+      "failures": []
+    },
+    {
+      "task": "closed",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 7084,
+      "failures": []
+    }
+  ],
+  "recovery": [
+    {
+      "fault": "stale-version",
+      "mistake": "Update with an out-of-date version",
+      "status": 409,
+      "code": "version_conflict",
+      "details": [
+        "current_version",
+        "expected_version",
+        "id",
+        "type"
+      ],
+      "lookups": 0,
+      "retry_status": 200,
+      "recovered_in_one_call": true
+    },
+    {
+      "fault": "missing-version",
+      "mistake": "Update without a version",
+      "status": 428,
+      "code": "version_required",
+      "details": [],
+      "lookups": 1,
+      "retry_status": 200,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "wrong-enum",
+      "mistake": "Stage written as closed-won",
+      "status": 422,
+      "code": "invalid_enum",
+      "details": [
+        "field",
+        "values"
+      ],
+      "lookups": 0,
+      "retry_status": 200,
+      "recovered_in_one_call": true
+    },
+    {
+      "fault": "constraint",
+      "mistake": "Won without an amount or close date",
+      "status": 422,
+      "code": "constraint_failed",
+      "details": [
+        "constraint",
+        "fields"
+      ],
+      "lookups": 0,
+      "retry_status": 200,
+      "recovered_in_one_call": true
+    },
+    {
+      "fault": "unknown-field",
+      "mistake": "Amount written as value",
+      "status": 422,
+      "code": "unknown_field",
+      "details": [
+        "fields"
+      ],
+      "lookups": 1,
+      "retry_status": 200,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "missing-required",
+      "mistake": "Interaction without its date",
+      "status": 422,
+      "code": "required_field",
+      "details": [
+        "field"
+      ],
+      "lookups": 1,
+      "retry_status": 201,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "wrong-reference",
+      "mistake": "Organization given by a guessed ID",
+      "status": 403,
+      "code": "permission_denied",
+      "details": [],
+      "lookups": 1,
+      "retry_status": 201,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "wrong-type",
+      "mistake": "Opportunity called Deal",
+      "status": 400,
+      "code": "unknown_type",
+      "details": [
+        "type"
+      ],
+      "lookups": 1,
+      "retry_status": 201,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "wrong-filter",
+      "mistake": "Filter key written as operator",
+      "status": 400,
+      "code": "invalid_query",
+      "details": [],
+      "lookups": 0,
+      "retry_status": null,
+      "recovered_in_one_call": false
+    },
+    {
+      "fault": "denied",
+      "mistake": "Change to a closed opportunity",
+      "status": 403,
+      "code": "permission_denied",
+      "details": [],
+      "lookups": 0,
+      "retry_status": null,
+      "recovered_in_one_call": false
+    }
+  ]
+}

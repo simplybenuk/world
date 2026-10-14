@@ -106,6 +106,9 @@ measurement shows it is the limit.
 - `python3 -m bench.scale` builds and times the million-record world in
   `artifacts/bench/scale`. It measures on a copy. Never write to the built
   database, because the agent tasks start from it.
+- `docs/results/` keeps the raw output behind every figure in the experiment
+  documents. `artifacts/` is scratch space and may be deleted. When a write-up
+  cites a run, copy its file into `docs/results/` and list it in that README.
 - `bench/agents/` holds the commands for agents other than the default Codex.
 - `bench/` measures discovery cost, round trips, and recovery. Run
   `python3 -m bench` after any protocol change and compare with the figures in

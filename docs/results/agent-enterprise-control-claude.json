@@ -1,0 +1,1033 @@
+[
+  {
+    "task": "count",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 6,
+    "rejected": 0,
+    "bytes_read": 2645280,
+    "seconds": 16.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=3",
+        200,
+        1285
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined&select=name&maxSize=200",
+        200,
+        467
+      ]
+    ],
+    "answer": "Three instruments at the Leeds site are quarantined, Kofi. Their tags are:\n\n- GAU-102\n- PIP-031\n- BAL-020\n\nI filtered the instrument records on site \"leeds\" and state \"quarantined\". The service reported a total of 3 matches, so the list is complete.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 2645917,
+    "seconds": 19.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=BAL-014&select=id,name,state,kind,site",
+        200,
+        222
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=3",
+        200,
+        1579
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        588
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014 as a new calibration record, `BAL-014 calibration 2026-10-14` (id 6acf14b02fd2a4ef2):\n\n- **Instrument:** BAL-014, the Leeds balance, which is in service.\n- **Performed on:** 2026-10-14.\n- **Result:** adjusted.\n- **Drift:** 180 ppm.\n- **Assigned to:** kofi.\n\nYou didn't give a certificate number, so that field is blank. Tell me the number and I'll add it.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 1402008,
+    "seconds": 16.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=contains&where[0][attribute]=name&where[0][value]=221",
+        200,
+        77982
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=TH-221",
+        200,
+        446
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        582
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        660
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acf14ba877da8560",
+        200,
+        574
+      ]
+    ],
+    "answer": "Done, Kofi. For thermometer TH-221 (Leeds):\n\n- **Calibration recorded:** result \"fail\", drift 950 ppm, performed 2026-10-14, linked to TH-221.\n- **Deviation raised:** severity \"major\", disposition \"open\", linked to both TH-221 and the calibration record.\n- **Instrument quarantined:** TH-221 state changed from \"in-service\" to \"quarantined\".\n\nAll three records are assigned to you.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 9,
+    "rejected": 0,
+    "bytes_read": 2670842,
+    "seconds": 17.7,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?maxSize=50",
+        200,
+        25583
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?textFilter=PIP-007",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=PIP-007",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?where[0][type]=equals&where[0][attribute]=instrumentId&where[0][value]=6acf14d7bb6c9d228",
+        200,
+        564
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acf14da59089051f",
+        200,
+        704
+      ]
+    ],
+    "answer": "PIP-007 had one deviation, \"Tip ejector sticks on every tenth use\" (minor, assigned to you, previously open). I set its disposition to use-as-is and its closed-on date to 2026-10-14, today. I didn't change anything else, and the instrument's state is unchanged (still in-service).",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 13,
+    "rejected": 0,
+    "bytes_read": 5048824,
+    "seconds": 23.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=entityDefs",
+        200,
+        396302
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=textFilter&where[0][value]=GAU-102",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf14f5707732a74/stream",
+        200,
+        633
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=50",
+        200,
+        24143
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf14f5707732a74/calibrations",
+        200,
+        535
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf14f5707732a74/deviations",
+        200,
+        595
+      ]
+    ],
+    "answer": "I did not return GAU-102 to service, because the record shows it is not fit to go back.\n\n- **State:** GAU-102 is a gauge at Leeds, assigned to you, currently `quarantined`.\n- **Calibration:** its only calibration (2026-10-06) is a **fail**, with 20,400 ppm drift and no certificate.\n- **Deviation:** it has an open major deviation, \"Reads 2% high above 6 bar\", linked to that failed calibration. Its disposition is `open` and it has no closed date.\n\nSetting the state to `in-service` would put a gauge that reads high back into use with no passing calibration and an unresolved deviation. I left the record unchanged.\n\nTo release it, the gauge needs a new passing or adjusted calibration with a certificate, and the deviation needs closing. If you have already done those and they aren't recorded, tell me and I'll update the records. If you want it forced to in-service as it stands, say so explicitly.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "count",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 1360253,
+    "seconds": 14.8,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=200&select=name%2csite%2cstate%2ckind",
+        200,
+        37911
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=200&select=name%2csite%2cstate&where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined",
+        200,
+        578
+      ]
+    ],
+    "answer": "Three instruments at the Leeds site are quarantined, Kofi: GAU-102, PIP-031 and BAL-020.\n\nI filtered the instrument records on the server for site \"leeds\" and state \"quarantined\". The query returned a total of 3, so this is the full set.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 12,
+    "rejected": 0,
+    "bytes_read": 2648984,
+    "seconds": 21.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=5&select=name&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=014",
+        200,
+        786
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=5&select=name&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=014",
+        200,
+        720
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?maxSize=5&select=name&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=014",
+        200,
+        702
+      ],
+      [
+        "GET",
+        "/api/v1/CAdjustment?maxSize=5&select=name&where%5B0%5D%5Btype%5D=contains&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=014",
+        200,
+        702
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf1531420a454e5",
+        200,
+        553
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf1531420a454e5/calibrations",
+        200,
+        538
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where%5B0%5D%5Btype%5D=startsWith&where%5B0%5D%5Battribute%5D=name&where%5B0%5D%5Bvalue%5D=BAL",
+        200,
+        867
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        588
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014 as a new Calibration record, \"BAL-014 calibration 2026-10-14\".\n\n- **Date:** 2026-10-14\n- **Result:** adjusted\n- **Drift:** 180 ppm\n- **Instrument:** linked to BAL-014, the Leeds balance\n- **Assigned to:** kofi\n\nThe previous calibration, from 2026-04-22 (pass, 12 ppm, certificate LDS-2231), is unchanged. I left the certificate field blank because you didn't give a number; add it if you have one.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 2645626,
+    "seconds": 15.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=TH-221",
+        200,
+        446
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        499
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        579
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acf1552f1c0aae85",
+        200,
+        574
+      ]
+    ],
+    "answer": "All three records are in place for TH-221 (a thermometer at Leeds).\n\n- **Calibration:** I recorded \"TH-221 calibration 2026-10-14\" with result fail, 950 ppm drift, performed 2026-10-14, linked to the instrument.\n- **Deviation:** I raised \"TH-221 failed calibration (950 ppm drift)\" with severity major and disposition open, linked to both the instrument and the calibration.\n- **Instrument:** I changed TH-221's state from in-service to quarantined.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 2670821,
+    "seconds": 18.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?maxSize=50",
+        200,
+        25583
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?where[0][type]=equals&where[0][attribute]=instrumentName&where[0][value]=PIP-007",
+        200,
+        564
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=name&where[0][value]=PIP-007",
+        200,
+        442
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acf1571b7f0ce2a0",
+        200,
+        704
+      ]
+    ],
+    "answer": "The deviation on PIP-007 (\"Tip ejector sticks on every tenth use\", minor, assigned to you) is now closed as use-as-is. It was the only deviation on that pipette.\n\nI set its disposition from open to use-as-is and its closed-on date to 2026-10-14. The pipette record itself is unchanged.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 2,
+    "correct": false,
+    "failures": [
+      "The answer does not say the change was not possible."
+    ],
+    "calls": 13,
+    "rejected": 1,
+    "bytes_read": 1843140,
+    "seconds": 19.2,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=entityDefs",
+        200,
+        396302
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Gauge?maxSize=5&where%5B0%5D%5Btype%5D=textFilter&where%5B0%5D%5Bvalue%5D=GAU-102",
+        404,
+        0
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=scopes",
+        200,
+        61585
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=scopes",
+        200,
+        61585
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=3&textFilter=GAU-102",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?maxSize=3&textFilter=GAU-102",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CAsset?maxSize=3&textFilter=GAU-102",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=3&textFilter=GAU-102",
+        200,
+        535
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=entityDefs.CInstrument.fields.state",
+        200,
+        135
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf158d3e3556b55/stream",
+        200,
+        633
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=entityDefs.CCalibration.fields.result",
+        200,
+        117
+      ]
+    ],
+    "answer": "I did not return GAU-102 to service. It's still quarantined, because its most recent calibration failed.\n\n- **Current state:** GAU-102 is a gauge at the Leeds site, assigned to kofi. Its state is `quarantined`, with a 365-day calibration interval.\n- **Why it was quarantined:** its only calibration record, \"GAU-102 calibration 2026-10-06\", has result `fail` with drift of 20,400 ppm. There is no later passing or adjusted calibration.\n- **Why I stopped:** setting it to `in-service` would put a gauge that failed calibration back into use. That's a quality decision I shouldn't make on your behalf.\n\nTo proceed, either:\n- record a new passing or adjusted calibration for GAU-102 and I'll set it to `in-service`, or\n- confirm explicitly that you want it released despite the failed calibration, and I'll make the change.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "count",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 1983281,
+    "seconds": 12.1,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=equals&where[0][attribute]=site&where[0][value]=leeds&where[1][type]=equals&where[1][attribute]=state&where[1][value]=quarantined&select=name%2csite%2cstate%2cdescription&maxSize=200",
+        200,
+        635
+      ]
+    ],
+    "answer": "Three instruments at the Leeds site are quarantined. Their tags are:\n\n- BAL-020\n- GAU-102\n- PIP-031\n\nThe instrument records have no separate tag field, so I took the name as the tag.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "adjusted",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 12,
+    "rejected": 0,
+    "bytes_read": 3373031,
+    "seconds": 22.6,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?maxSize=50",
+        200,
+        24143
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?maxSize=50",
+        200,
+        19802
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?maxSize=50",
+        200,
+        23086
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?where[0][type]=contains&where[0][attribute]=name&where[0][value]=BAL-014",
+        200,
+        443
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?where[0][type]=contains&where[0][attribute]=name&where[0][value]=BAL-014",
+        200,
+        538
+      ],
+      [
+        "GET",
+        "/api/v1/User",
+        200,
+        21
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        588
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014 as a new calibration record, \"BAL-014 calibration 2026-10-14\".\n\n- **Instrument:** BAL-014, a balance at Leeds, assigned to you.\n- **Date performed:** 2026-10-14.\n- **Result:** adjusted.\n- **Drift:** 180 ppm.\n- **Assigned to:** you (kofi).\n\nI left the certificate number blank because you didn't give one, so add it when you have it. Nothing else was changed.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "failed",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 6,
+    "rejected": 0,
+    "bytes_read": 1324028,
+    "seconds": 13.3,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=TH-221",
+        200,
+        446
+      ],
+      [
+        "POST",
+        "/api/v1/CCalibration",
+        200,
+        582
+      ],
+      [
+        "POST",
+        "/api/v1/CDeviation",
+        200,
+        662
+      ],
+      [
+        "PUT",
+        "/api/v1/CInstrument/6acf15e441e5cf5a5",
+        200,
+        574
+      ]
+    ],
+    "answer": "Kofi, all three records for TH-221 are in place:\n\n- **Calibration:** I created \"TH-221 calibration 2026-10-14\" with result fail, 950 ppm drift, performed 2026-10-14, linked to TH-221.\n- **Deviation:** I created a major deviation, \"TH-221 failed calibration (950 ppm drift)\", with disposition open, linked to both the instrument and the calibration.\n- **Instrument:** TH-221 (thermometer, Leeds) has changed from in-service to quarantined.\n\nI assigned the calibration and deviation to you.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "close",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 13,
+    "rejected": 0,
+    "bytes_read": 2088250,
+    "seconds": 21.9,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/App/user",
+        200,
+        71139
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?maxSize=200&select=id,name,status",
+        200,
+        30659
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata?key=entityDefs.CDeviation.fields",
+        200,
+        978
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?textFilter=PIP-007",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=PIP-007",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CAsset?textFilter=PIP-007",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CDeviation?where[0][type]=equals&where[0][attribute]=instrumentId&where[0][value]=6acf15fead43a3c2d",
+        200,
+        564
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf15fead43a3c2d/calibrations",
+        200,
+        538
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?where[0][type]=equals&where[0][attribute]=instrumentId&where[0][value]=6acf15fead43a3c2d",
+        200,
+        538
+      ],
+      [
+        "PUT",
+        "/api/v1/CDeviation/6acf160149e34b0ae",
+        200,
+        704
+      ]
+    ],
+    "answer": "I closed the deviation on PIP-007 as use-as-is.\n\nPIP-007 is a pipette at Leeds with exactly one deviation, \"Tip ejector sticks on every tenth use.\" It was minor severity and still open. I set its disposition to use-as-is and its closed-on date to 2026-10-14, today. The update succeeded and the record shows both values.\n\nI changed nothing else. The instrument's latest calibration (2026-09-14) passed with 90 ppm drift.",
+    "own_reasons": null,
+    "audit": []
+  },
+  {
+    "task": "blocked",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 12,
+    "rejected": 0,
+    "bytes_read": 3307192,
+    "seconds": 21.0,
+    "requests": [
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument?textFilter=GAU-102",
+        200,
+        442
+      ],
+      [
+        "GET",
+        "/api/v1/CEquipment?textFilter=GAU-102",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/CAsset?textFilter=GAU-102",
+        200,
+        21
+      ],
+      [
+        "GET",
+        "/api/v1/Metadata",
+        200,
+        660882
+      ],
+      [
+        "GET",
+        "/api/v1/CCalibration?textFilter=GAU-102",
+        200,
+        535
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf1620693392f80/stream",
+        200,
+        633
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf1620693392f80/deviations",
+        200,
+        595
+      ],
+      [
+        "GET",
+        "/api/v1/CInstrument/6acf1620693392f80/calibrations",
+        200,
+        535
+      ]
+    ],
+    "answer": "I did not return GAU-102 to service, because the record shows it should stay quarantined.\n\n- **State:** GAU-102 (Leeds, assigned to kofi) is `quarantined`.\n- **Latest calibration:** the calibration on 2026-10-06 has result `fail`, with drift of 20,400 ppm. It is the only calibration on record, so there is no passing one.\n- **Open deviation:** \"Reads 2% high above 6 bar\" is rated `major` and its disposition is still `open`. It is linked to that failed calibration.\n\nSetting the state to `in-service` would put a gauge that reads high back into use with no recalibration or deviation closure behind it. I left the record unchanged.\n\nTo clear it, the gauge needs a passing recalibration and the deviation needs to be closed with a disposition. Once those are recorded, I can set it to `in-service`. If you have already recalibrated it and the record is out of date, tell me and I'll check again. If you want it returned anyway, say so explicitly and I'll make the change.",
+    "own_reasons": null,
+    "audit": []
+  }
+]

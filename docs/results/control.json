@@ -1,0 +1,153 @@
+{
+  "version": "10.0.9",
+  "size": {
+    "EspoCRM 10.0.9 release archive, compressed": 42630269,
+    "EspoCRM application files, installed": 172006439,
+    "EspoCRM container image (application, PHP, Apache)": 1070550244,
+    "MariaDB container image": 459514070,
+    "seeded database directory": 218144088
+  },
+  "memory": {
+    "world-control-espocrm-1": "109.2MiB",
+    "world-control-db-1": "77.16MiB"
+  },
+  "world": {
+    "World engine, protocol, and CRM definition": 84376,
+    "Python interpreter and standard library": 65885211,
+    "World server, idle memory": 29458432
+  },
+  "discovery": [
+    {
+      "actor": "priya",
+      "metadata_bytes": 247673
+    },
+    {
+      "actor": "nina",
+      "metadata_bytes": 247673
+    }
+  ],
+  "tasks": [
+    {
+      "task": "pipeline",
+      "calls": 1,
+      "rejected": 0,
+      "bytes_read": 825,
+      "milliseconds": 21.3,
+      "failures": []
+    },
+    {
+      "task": "win",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 1846,
+      "milliseconds": 111.1,
+      "failures": []
+    },
+    {
+      "task": "lose",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 1344,
+      "milliseconds": 58.7,
+      "failures": []
+    },
+    {
+      "task": "contact",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 2455,
+      "milliseconds": 122.4,
+      "failures": []
+    },
+    {
+      "task": "closed",
+      "calls": 2,
+      "rejected": 1,
+      "bytes_read": 348,
+      "milliseconds": 45.2,
+      "failures": []
+    }
+  ],
+  "mistakes": [
+    {
+      "fault": "stale-version",
+      "mistake": "Update with an out-of-date version",
+      "status": 409,
+      "reason": "modified",
+      "body": "{\"values\":{\"amountCurrency\":\"USD\",\"amount\":22000},\"versionNumber\":1}",
+      "harm": null
+    },
+    {
+      "fault": "missing-version",
+      "mistake": "Update without a version",
+      "status": 200,
+      "reason": "",
+      "body": "{\"id\":\"6acd56ec7b5699b94\",\"name\":\"Harbor Logistics pilot\",\"deleted\":false,\"amount\":25000,\"amountWeightedConverted\":12500,\"stage\":\"Proposal\",\"lastStage\":\"Proposal\",\"probability\":50,\"leadSource\":null,\"closeDate\":\"2026-10-09\",\"description\":null,\"createdAt\":\"2026-10-12 21:53:48\",\"modifiedAt\":\"2026-10-12 21:53:49\",\"amountCurrency\":\"USD\",\"streamUpdatedAt\":\"2026-10-12 21:53:49\",\"amountConverted\":25000,\"a",
+      "harm": null
+    },
+    {
+      "fault": "wrong-enum",
+      "mistake": "Stage written as closed-won",
+      "status": 400,
+      "reason": "Field validation failure; entityType: Opportunity, field: stage, type: valid.",
+      "body": "{\"messageTranslation\":{\"label\":\"validationFailure\",\"scope\":null,\"data\":{\"field\":\"stage\",\"type\":\"valid\"}}}",
+      "harm": null
+    },
+    {
+      "fault": "constraint",
+      "mistake": "Won without an amount or close date",
+      "status": 200,
+      "reason": "",
+      "body": "{\"id\":\"6acd570fcca9677a8\",\"name\":\"Alder Clinics rollout\",\"deleted\":false,\"amount\":0,\"amountWeightedConverted\":0,\"stage\":\"Closed Won\",\"lastStage\":\"Closed Won\",\"probability\":100,\"leadSource\":null,\"closeDate\":\"2027-01-10\",\"description\":null,\"createdAt\":\"2026-10-12 21:54:23\",\"modifiedAt\":\"2026-10-12 21:54:24\",\"amountCurrency\":\"USD\",\"streamUpdatedAt\":\"2026-10-12 21:54:24\",\"amountConverted\":0,\"accountId",
+      "harm": "won with an amount of zero"
+    },
+    {
+      "fault": "unknown-field",
+      "mistake": "Amount written as value",
+      "status": 200,
+      "reason": "",
+      "body": "{\"id\":\"6acd57211eeedb122\",\"name\":\"Harbor Logistics pilot\",\"deleted\":false,\"amount\":22000,\"amountWeightedConverted\":11000,\"stage\":\"Proposal\",\"lastStage\":\"Proposal\",\"probability\":50,\"leadSource\":null,\"closeDate\":\"2026-10-09\",\"description\":null,\"createdAt\":\"2026-10-12 21:54:41\",\"modifiedAt\":\"2026-10-12 21:54:42\",\"amountCurrency\":\"USD\",\"streamUpdatedAt\":\"2026-10-12 21:54:42\",\"amountConverted\":22000,\"a",
+      "harm": "the amount did not change"
+    },
+    {
+      "fault": "missing-required",
+      "mistake": "Interaction without its date",
+      "status": 400,
+      "reason": "Field validation failure; entityType: Call, field: dateStart, type: required.",
+      "body": "{\"messageTranslation\":{\"label\":\"validationFailure\",\"scope\":null,\"data\":{\"field\":\"dateStart\",\"type\":\"required\"}}}",
+      "harm": null
+    },
+    {
+      "fault": "wrong-reference",
+      "mistake": "Organization given by a guessed ID",
+      "status": 403,
+      "reason": "Can't relate with non-existing record. entity type: Contact, link: account.",
+      "body": "{\"messageTranslation\":{\"label\":\"cannotRelateNonExisting\",\"scope\":null,\"data\":{\"foreignEntityType\":\"Account\"}}}",
+      "harm": null
+    },
+    {
+      "fault": "wrong-type",
+      "mistake": "Opportunity called Deal",
+      "status": 404,
+      "reason": "Controller 'Deal' does not exist.",
+      "body": "",
+      "harm": null
+    },
+    {
+      "fault": "wrong-filter",
+      "mistake": "Filter key written as operator",
+      "status": 200,
+      "reason": "",
+      "body": "{\"total\":1,\"list\":[{\"id\":\"6acd5766d073ce9e0\",\"name\":\"Harbor Logistics pilot\",\"deleted\":false,\"amount\":22000,\"amountWeightedConverted\":11000,\"stage\":\"Proposal\",\"lastStage\":\"Proposal\",\"probability\":50,\"leadSource\":null,\"closeDate\":\"2026-10-09\",\"description\":null,\"createdAt\":\"2026-10-12 21:55:50\",\"modifiedAt\":\"2026-10-12 21:55:50\",\"amountCurrency\":\"USD\",\"streamUpdatedAt\":\"2026-10-12 21:55:51\",\"amount",
+      "harm": null
+    },
+    {
+      "fault": "denied",
+      "mistake": "Change to a closed opportunity",
+      "status": 403,
+      "reason": "A closed opportunity can only be changed by an administrator.",
+      "body": "{\"message\":\"A closed opportunity can only be changed by an administrator.\"}",
+      "harm": null
+    }
+  ]
+}
