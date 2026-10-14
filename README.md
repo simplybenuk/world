@@ -394,6 +394,8 @@ million records on one machine. It is 1.4 GB, single operations take 2 to 35 ms,
 and an agent completes the same tasks in the same time as in a 20-record world.
 EspoCRM with the same million records needed more than twice the calls.
 
+[The plan](docs/plan.md) sets out the steps from here to a public demo.
+
 There is no settled architecture or language yet.
 
 The first goal is not to build a production framework.

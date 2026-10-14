@@ -29,7 +29,15 @@ agent its own token. Do not let one work with a person's own token.
 Ben, 2026-10-13. Once the measurements give confidence that World is onto
 something, stand up a demo application and let people use it. Until then the
 work is experiments and improvements against the two aims above. Do not start
-building or hosting a public demo before Ben says the evidence is enough.
+building or hosting a public demo before Ben says the evidence is enough. The
+demo is planned in `docs/plan.md`. Hosting it needs Ben's decision.
+
+### The plan to a public demo
+
+Ben, 2026-10-14. Follow `docs/plan.md`. In short: firm up the evidence on a
+large real dataset, then build a private demo of a team tool where people bring
+their own agents, then open it to the public. Step 1 is under way. Update the
+plan when a step finishes or a decision changes it.
 
 ### Order of improvements
 
