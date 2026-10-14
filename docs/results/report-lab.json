@@ -1,0 +1,81 @@
+{
+  "size": {
+    "engine and HTTP protocol (world/)": 104995,
+    "lab definition (worlds/lab.py)": 9609,
+    "seeded database (20 records with history)": 155648,
+    "reference client, not part of World (client/, client_gateway/)": 111780
+  },
+  "discovery": [
+    {
+      "actor": "ada",
+      "role": "manager",
+      "describe_bytes": 6306,
+      "all_records_bytes": 6159,
+      "records": 20
+    },
+    {
+      "actor": "kofi",
+      "role": "technician",
+      "describe_bytes": 6386,
+      "all_records_bytes": 6178,
+      "records": 20
+    },
+    {
+      "actor": "lena",
+      "role": "technician",
+      "describe_bytes": 6386,
+      "all_records_bytes": 6183,
+      "records": 20
+    },
+    {
+      "actor": "ines",
+      "role": "auditor",
+      "describe_bytes": 6390,
+      "all_records_bytes": 6190,
+      "records": 20
+    }
+  ],
+  "tasks": [
+    {
+      "task": "count",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 7312,
+      "milliseconds": 10.2,
+      "failures": []
+    },
+    {
+      "task": "adjusted",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 7073,
+      "milliseconds": 6.6,
+      "failures": []
+    },
+    {
+      "task": "failed",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 7820,
+      "milliseconds": 16.3,
+      "failures": []
+    },
+    {
+      "task": "close",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 7166,
+      "milliseconds": 16.1,
+      "failures": []
+    },
+    {
+      "task": "blocked",
+      "calls": 3,
+      "rejected": 1,
+      "bytes_read": 7028,
+      "milliseconds": 14.3,
+      "failures": []
+    }
+  ],
+  "recovery": []
+}

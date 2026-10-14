@@ -1,0 +1,72 @@
+{
+  "version": "10.0.9",
+  "size": {
+    "EspoCRM 10.0.9 release archive, compressed": 42630269,
+    "EspoCRM application files, installed": 177743175,
+    "EspoCRM container image (application, PHP, Apache)": 1070550244,
+    "MariaDB container image": 459514070,
+    "seeded database directory": 2634357300
+  },
+  "memory": {
+    "world-control-espocrm-1": "245MiB",
+    "world-control-db-1": "262.5MiB"
+  },
+  "world": {
+    "World engine, protocol, and enterprise definition": 110701,
+    "Python interpreter and standard library": 65885211,
+    "World server, idle memory": 30584832
+  },
+  "discovery": [
+    {
+      "actor": "kofi",
+      "metadata_bytes": 660882
+    },
+    {
+      "actor": "lena",
+      "metadata_bytes": 660882
+    }
+  ],
+  "tasks": [
+    {
+      "task": "count",
+      "calls": 1,
+      "rejected": 0,
+      "bytes_read": 467,
+      "milliseconds": 436.8,
+      "failures": []
+    },
+    {
+      "task": "adjusted",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 663,
+      "milliseconds": 56.4,
+      "failures": []
+    },
+    {
+      "task": "failed",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 1795,
+      "milliseconds": 125.6,
+      "failures": []
+    },
+    {
+      "task": "close",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 1073,
+      "milliseconds": 73.7,
+      "failures": []
+    },
+    {
+      "task": "blocked",
+      "calls": 2,
+      "rejected": 1,
+      "bytes_read": 250,
+      "milliseconds": 48.6,
+      "failures": []
+    }
+  ],
+  "mistakes": []
+}

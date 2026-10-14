@@ -1,0 +1,128 @@
+[
+  {
+    "task": "adjusted",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 23300,
+    "seconds": 11.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        17043
+      ],
+      [
+        "GET",
+        "/api/world?types=Instrument,Calibration,Deviation",
+        200,
+        5570
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        317
+      ],
+      [
+        "POST",
+        "/api/records/Calibration",
+        201,
+        370
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014. It is a new Calibration record, dated 2026-10-13, with result \"adjusted\", drift 180 ppm and Kofi as technician. The record ID is calibration-5a1133e97863411ca15672dd79122305.\n\nI made no other changes. I didn't open a Deviation or alter the instrument's state, since you only asked for the calibration to be recorded. The certificate field is empty because you didn't give a certificate reference.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-13T23:08:00.965Z  kofi via claude-adjusted  viewed  Instrument bal-014  Found by a query.",
+      "2026-10-13T23:08:03.606Z  kofi via claude-adjusted  created  Calibration calibration-5a1133e97863411ca15672dd79122305  instrument \"bal-014\"; performed_on \"2026-10-13\"; technician \"kofi\"; result \"adjusted\"; drift_ppm 180. Reason: Kofi calibrated BAL-014 today; adjusted, drift 180 ppm"
+    ]
+  },
+  {
+    "task": "adjusted",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 23300,
+    "seconds": 10.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        17043
+      ],
+      [
+        "GET",
+        "/api/world?types=Instrument,Calibration,Deviation",
+        200,
+        5570
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        317
+      ],
+      [
+        "POST",
+        "/api/records/Calibration",
+        201,
+        370
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014 as a new Calibration record, `calibration-83471e6bc94f45d2b1f270761ebb4787`.\n\n- **Instrument:** BAL-014 (`bal-014`), a balance at Leeds with you as custodian.\n- **Date:** 2026-10-13.\n- **Result:** adjusted.\n- **Drift:** 180 ppm.\n- **Technician:** kofi, filled in automatically.\n\nI didn't touch the instrument itself, since it's already in service, and I didn't raise a deviation because you didn't ask for one. The certificate field is empty; I had no certificate reference to put in it.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-13T23:08:13.072Z  kofi via claude-adjusted  viewed  Instrument bal-014  Found by a query.",
+      "2026-10-13T23:08:15.428Z  kofi via claude-adjusted  created  Calibration calibration-83471e6bc94f45d2b1f270761ebb4787  instrument \"bal-014\"; performed_on \"2026-10-13\"; result \"adjusted\"; drift_ppm 180; technician \"kofi\". Reason: Kofi calibrated BAL-014 today; adjusted, drift 180 ppm"
+    ]
+  },
+  {
+    "task": "adjusted",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 23300,
+    "seconds": 9.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        17043
+      ],
+      [
+        "GET",
+        "/api/world?types=Instrument,Calibration,Deviation",
+        200,
+        5570
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        317
+      ],
+      [
+        "POST",
+        "/api/records/Calibration",
+        201,
+        370
+      ]
+    ],
+    "answer": "I recorded the calibration for BAL-014 (Leeds balance, you're its custodian) as a new Calibration record dated 2026-10-13. It shows result \"adjusted\", drift 180 ppm, technician Kofi, and no certificate number. I didn't create a Deviation or change the instrument's state, since you didn't ask for either.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-13T23:08:24.824Z  kofi via claude-adjusted  viewed  Instrument bal-014  Found by a query.",
+      "2026-10-13T23:08:27.145Z  kofi via claude-adjusted  created  Calibration calibration-d7d9b529dddf4c56b3a6f05d2bdfee97  instrument \"bal-014\"; performed_on \"2026-10-13\"; technician \"kofi\"; result \"adjusted\"; drift_ppm 180. Reason: Kofi calibrated BAL-014 today; adjusted, drift 180 ppm"
+    ]
+  }
+]

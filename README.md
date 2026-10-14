@@ -2,6 +2,10 @@
 
 **What if applications didn't exist?**
 
+The first experiment is runnable. [Open a world, generate a client view, and save a change](docs/first-experiment.md), or read [what the experiment established](docs/first-experiment-findings.md).
+
+The second experiment [runs a CRM on the same engine and measures what an agent pays to use it](docs/second-experiment.md).
+
 Today's software usually combines three things:
 
 1. A system of record
@@ -250,6 +254,8 @@ because {
 
 History should be part of the model rather than an application logging feature added later.
 
+A person should be able to read it. World keeps a plain-text audit with one line for every time a record is created, viewed, changed, or deleted. Each line says when it happened, who did it, and what happened.
+
 ## The hypothesis
 
 World is based on a few assumptions worth testing.
@@ -365,7 +371,32 @@ If World needs to know what a button, form, dashboard or Kanban board is, the ab
 
 Very experimental.
 
-There is no settled architecture, protocol or language yet.
+The first experiment has a SQLite record service, an introspectable JSON protocol,
+and a generic browser client. Codex generates temporary view plans from the
+discovered schema and records. The client renders them and presents proposed
+changes for review. The record service validates and saves accepted changes,
+including permissions, versions and history.
+
+The service contains no UI definitions. View layouts and generation instructions
+belong to the client. A fresh client starts with a fresh interface, while the
+records and their history remain. [Run and verify the experiment](docs/first-experiment.md).
+
+The engine now runs two worlds, a team and a small CRM, each written as a
+definition in `worlds/`. `python3 -m bench` measures what an agent reads and how
+many calls it makes to complete a task. [Read the second experiment](docs/second-experiment.md).
+
+[The third experiment](docs/third-experiment.md) compares World with EspoCRM on a
+domain the agent has never seen. Both get every task right, and on World the
+agent uses half the calls and 58% of the time.
+
+[The fourth experiment](docs/fourth-experiment.md) runs a world of 201 types and a
+million records on one machine. It is 1.4 GB, single operations take 2 to 35 ms,
+and an agent completes the same tasks in the same time as in a 20-record world.
+EspoCRM with the same million records needed more than twice the calls.
+
+[The plan](docs/plan.md) sets out the steps from here to a public demo.
+
+There is no settled architecture or language yet.
 
 The first goal is not to build a production framework.
 

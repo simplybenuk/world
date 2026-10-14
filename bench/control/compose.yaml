@@ -1,0 +1,40 @@
+# The control for the comparison: an existing open-source CRM, as its project ships it.
+# Local trial only. The passwords are fixtures and the port binds to loopback.
+name: world-control
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: control-root
+      MARIADB_DATABASE: espocrm
+      MARIADB_USER: espocrm
+      MARIADB_PASSWORD: control-db
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+  espocrm:
+    image: espocrm/espocrm:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ESPOCRM_DATABASE_HOST: db
+      ESPOCRM_DATABASE_USER: espocrm
+      ESPOCRM_DATABASE_PASSWORD: control-db
+      ESPOCRM_ADMIN_USERNAME: admin
+      ESPOCRM_ADMIN_PASSWORD: control-admin
+      ESPOCRM_SITE_URL: http://127.0.0.1:8791
+    volumes:
+      - data:/var/www/html/data
+      - custom:/var/www/html/custom
+      - client-custom:/var/www/html/client/custom
+    ports:
+      - "127.0.0.1:8791:80"
+volumes:
+  db:
+  data:
+  custom:
+  client-custom:
