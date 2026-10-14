@@ -46,9 +46,13 @@ invited first.
    people issue and revoke tokens for their own agents.
 3. **Changing a world while it runs.** A team will want its own statuses and
    fields. A world's definition must become data that can change safely, with
-   existing records migrated and the change in the audit.
+   existing records migrated and the change in the audit. Start from the JSON
+   definitions and declared stage transitions on `experiment/crm-world`; see
+   [the parallel line](crm-world-branch.md).
 4. **A readable audit page.** Show each team its audit, so the second of
    World's aims is visible.
+5. **Who may read history.** Decide whether reading a record's history needs
+   access to it at the time as well as now, as `experiment/crm-world` required.
 
 Done when: a handful of invited people have used it with their own agents.
 
@@ -66,6 +70,10 @@ Done when: Ben opens it.
 - Confirm several writes with one wait for the disk, to raise throughput.
 - Count and search inside SQLite when the actor may read every candidate.
 - Make history and the reference index compact.
+- Report record counts in the description, so an agent can choose between
+  reading everything and searching.
+- Describe what fields mean, such as a money field's unit or the difference
+  between when something happened and when it was recorded.
 
 See [the fourth experiment](fourth-experiment.md) for the measurements behind
 these.

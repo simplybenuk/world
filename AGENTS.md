@@ -123,12 +123,17 @@ measurement shows it is the limit.
   `docs/second-experiment.md`. `python3 -m bench agent` spends the user's model
   account, so run it when the change warrants it.
 - `client/` and `client_gateway/` are the reference client.
+- `experiment/crm-world` is a separate line of work from 2026-10-04, checked out
+  at `/home/ben/projects/world-crm-experiment`. It is a reference, not to be
+  merged. `docs/crm-world-branch.md` records what it found.
 
 ## Constraints
 
 - World contains no UI definitions. See the design constraint in the README.
 - The record service and client use only the Python standard library and plain
   browser JavaScript. Do not add a package or build step without asking.
-- A systemd user service may be running the team world from this checkout with
-  data in `~/.local/share/world`. Tests and experiments use temporary data
-  directories and never that one.
+- `world-experiment.service` runs the team world from this checkout on port 8787,
+  with data in `~/.local/share/world`. `world-crm-experiment.service` (8788) and
+  `world-agent-experiment.service` (8789) run from the `experiment/crm-world`
+  worktree. Tests and experiments use temporary data directories and other
+  ports, and never touch these services or their data.
