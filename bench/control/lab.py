@@ -102,9 +102,12 @@ def reset(users):
     """Remove every lab record and load the same seed as the lab world."""
     import worlds
     admin = Api()
+    # Remove what the seed and earlier tasks wrote. Rows loaded for the company-sized test are older, so they stay.
+    written_since = "?maxSize=200&select=id&where[0][type]=after&where[0][attribute]=createdAt&where[0][value]=2026-10-01%2000:00:00"
     for entity in ("CDeviation", "CCalibration", "CInstrument"):
-        for record in admin.all(entity):
-            admin.ok("DELETE", f"{entity}/{record['id']}")
+        while batch := admin.ok("GET", entity + written_since)["list"]:
+            for record in batch:
+                admin.ok("DELETE", f"{entity}/{record['id']}")
     ids = {"ada": admin.ok("GET", "App/user")["user"]["id"], **{name: user["id"] for name, user in users.items()}}
     for type_name, record_id, data in worlds.load("lab").seed(date.today()):
         if type_name == "Instrument":

@@ -24,7 +24,7 @@ from world.store import WorldStore
 import worlds
 
 DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise}
-CONTROLS = {"crm": "espocrm", "lab": "lab"}
+CONTROLS = {"crm": "espocrm", "lab": "lab", "enterprise": "enterprise"}
 domain = crm  # set from --domain
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -145,7 +145,7 @@ def control(args):
         "World server, idle memory": resident_memory(),
     }
     discovery = []
-    for actor in ("priya", "nina"):
+    for actor in list(users)[:2]:
         meter = espocrm.Meter()
         espocrm.Api(api_key=users[actor]["key"], port=meter.port).ok("GET", "Metadata")
         discovery.append({"actor": actor, "metadata_bytes": meter.usage()["bytes_read"]})

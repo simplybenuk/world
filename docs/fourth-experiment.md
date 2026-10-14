@@ -134,11 +134,69 @@ measurement had written 80 calibrations into the database the tasks start from,
 and the checker counted them. Measurements now work on a copy. The task was run
 again on a clean build and all three runs passed.
 
+## The control at the same size
+
+EspoCRM was given the same 197 generated types, as custom entities with the same
+fields, links, and closing rule, created through its admin API in 28 minutes.
+`bench/control/enterprise.py` then wrote the same million generated records
+straight into its database in 86 seconds. The lab's entities, roles, and seed
+are unchanged from the third experiment.
+
+```sh
+python3 -m bench.control.enterprise setup
+python3 -m bench.control.enterprise load
+python3 -m bench control --domain enterprise
+python3 -m bench agent --domain enterprise --control --command bench/agents/claude.sh --repeat 3
+```
+
+Both ran on this machine, alongside everything else on it, so read the times
+as rough.
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Self-description | 17 KB index, then 2 to 6 KB per request | 661 KB, about 165,000 tokens |
+| Data on disk | 1,395 MB, with a history event for every record | 2,634 MB, with no history for the loaded rows |
+| Memory while serving | 30 MB | 508 MB across two containers |
+| Software | 80 KB, plus Python's 66 MB | 1.53 GB as two container images |
+
+### An agent at company size
+
+Claude Code, the same five tasks and prompts, three runs each.
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Task runs correct | 15 of 15 | 14 of 15 |
+| Calls | 61 | 134 |
+| Rejected calls | 0 | 1 |
+| Agent time, all 15 runs | 170 s | 273 s |
+| Bytes fetched, median run | 23 KB | 2.6 MB |
+| Bytes fetched, largest run | 25 KB | 5.0 MB |
+
+World needed 46% of EspoCRM's calls and 62% of its time.
+
+| | 20 records, 4 types | 1,000,000 records, 201 types |
+| --- | --- | --- |
+| World calls | 44 | 61 |
+| EspoCRM calls | 108 | 134 |
+| World agent time | 176 s | 170 s |
+| EspoCRM agent time | 243 s | 273 s |
+
+The agent fetched EspoCRM's 661 KB metadata up to eight times in one task. In
+one run it guessed an entity called `Gauge`, then searched `CEquipment` and
+`CAsset` for the gauge's tag before finding it under `CInstrument`. On World it
+read the 17 KB index, asked for the two or three types it needed, and went
+straight to the records.
+
+The failed EspoCRM run did not change the gauge, which was right, but it gave
+the wrong reason. It said the latest calibration had failed. EspoCRM's rule
+about open deviations is a before-save script, which an agent using the API
+cannot read, so the agent judged for itself. World states the same rule in its
+description, and the agent quoted it.
+
+The World figures include the three re-run calibration tasks described above.
+
 ## What this does not show
 
-- **No control at this size.** EspoCRM has not been loaded with the same 201
-  types and a million records. Its metadata was 191 KB with three custom
-  entities, and an agent's trouble with it came from that size.
 - **One machine, one disk.** Nothing here is replicated or backed up.
 - **Generated data.** The 197 extra types share one shape. Real types differ
   more, and their descriptions are longer.
@@ -150,4 +208,5 @@ again on a clean build and all three runs passed.
 1. Confirm several writes with one wait for the disk.
 2. Count and search inside SQLite when the actor may read every candidate.
 3. Make history and the reference index compact.
-4. Load the control with the same world, on hardware agreed with Ben.
+4. Repeat both sides on a dedicated machine if the timings need to be exact.
+   The call counts do not depend on the hardware.
