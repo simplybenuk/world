@@ -46,6 +46,8 @@ def validate_value(field: str, value: Any, spec: dict[str, Any]) -> None:
             _invalid(field, f"{field} must be a whole number.")
         if value < spec.get("min", -2**53) or value > spec.get("max", 2**53):
             _invalid(field, f"{field} is outside the allowed range.")
+    if kind == "boolean" and type(value) is not bool:
+        _invalid(field, f"{field} must be true or false.")
     if kind in ("text", "enum", "date", "reference"):
         if not isinstance(value, str):
             _invalid(field, f"{field} must be a string.")

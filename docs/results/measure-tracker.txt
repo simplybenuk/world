@@ -1,0 +1,27 @@
+## 896,608 records
+
+Database on disk, with history and indexes: 3,017 MB (3,365 bytes a record)
+
+| Part | Size |
+| --- | --- |
+| Records | 1,098 MB |
+| History | 1,413 MB |
+| Field indexes | 183 MB |
+| Reference index | 236 MB |
+| Other indexes | 33 MB |
+
+| Operation | Median |
+| --- | --- |
+| Describe the world | 10.2 ms |
+| Read one issue by ID | 7.0 ms |
+| Find an issue by project and number | 8.3 ms |
+| Comments on one issue | 14.2 ms |
+| Count open issues in one project | 181.0 ms |
+| Count issues with one label | 598.5 ms |
+| First 100 of one author's issues | 33.5 ms |
+| Search titles in one project | 584.3 ms |
+| Search titles everywhere | 5,812.8 ms |
+| Comment on an issue | 9.1 ms |
+| Label an issue | 17.5 ms |
+| Audit lines for one issue | 1.5 ms |
+| Add a maintainer to a project | 137.8 ms |

@@ -18,13 +18,13 @@ import sys
 import tempfile
 import time
 
-from . import crm, enterprise, lab
+from . import crm, enterprise, lab, tracker
 from .harness import running
 from world.store import WorldStore
 import worlds
 
-DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise}
-CONTROLS = {"crm": "espocrm", "lab": "lab", "enterprise": "enterprise"}
+DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise, "tracker": tracker}
+CONTROLS = {"crm": "espocrm", "lab": "lab", "enterprise": "enterprise", "tracker": "tracker"}
 domain = crm  # set from --domain
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,25 +66,31 @@ def measure_size():
     }
 
 
+def source():
+    """The database a large world starts from, or None for a world seeded from its definition."""
+    return getattr(domain, "SOURCE", None)
+
+
 def measure_discovery():
     rows = []
-    with running(domain.WORLD) as world:
+    with running(domain.WORLD, source()) as world:
         for actor in world.store.definition.actors:
             client = world.client(actor)
             sizes = []
-            for path in ("/api/world", "/api/records"):
+            # Reading every record of a large world is not a step any client would take.
+            for path in ("/api/world",) if source() else ("/api/world", "/api/records"):
                 client.get(path)
                 sizes.append(world.requests[-1][3])
             role = world.store.get_record(actor, "Person", actor)["data"]["role"]
-            rows.append({"actor": actor, "role": role, "describe_bytes": sizes[0], "all_records_bytes": sizes[1],
-                         "records": len(world.store.list_records(actor))})
+            rows.append({"actor": actor, "role": role, "describe_bytes": sizes[0], "all_records_bytes": sizes[1] if len(sizes) > 1 else 0,
+                         "records": 0 if source() else len(world.store.list_records(actor))})
     return rows
 
 
 def measure_tasks():
     rows = []
     for task in domain.TASKS:
-        with running(domain.WORLD) as world:
+        with running(domain.WORLD, source()) as world:
             started = time.perf_counter()
             answer = task.solve(world.client(task.actor))
             seconds = time.perf_counter() - started
@@ -209,7 +215,7 @@ def table(headers, rows):
 
 def report(args):
     domain.SEEDED.update(seeded_ids())
-    result = {"size": measure_size(), "discovery": measure_discovery(), "tasks": measure_tasks(), "recovery": measure_recovery()}
+    result = {"size": {} if source() else measure_size(), "discovery": measure_discovery(), "tasks": measure_tasks(), "recovery": measure_recovery()}
     print("## Size\n")
     print(table(["Part", "Bytes"], [(name, f"{size:,}") for name, size in result["size"].items()]))
     print("\n## Discovery cost\n")
@@ -272,7 +278,7 @@ Finish with a short plain-text answer: what you found or changed, or why you cou
 @contextmanager
 def world_target(task, label):
     """A fresh World for one task: its prompt, its meter, and its checker."""
-    with running(domain.WORLD, getattr(domain, "SOURCE", None)) as world:
+    with running(domain.WORLD, source()) as world:
         def finish(answer):
             return task.check(world.store, answer), not any(DEFAULT_REASON in line for line in recent_audit(world.store))
         yield PROMPT.format(url=world.url, token=world.agent_token(task.actor, label), task=task.prompt), world, finish
@@ -303,6 +309,8 @@ def agent(args):
             with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
                 answer_file = Path(workspace) / "answer.txt"
                 command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
+                if args.command and (ROOT / command[0]).is_file():
+                    command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
                 environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
                 started = time.monotonic()
                 try:

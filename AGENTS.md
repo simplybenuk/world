@@ -56,6 +56,15 @@ Ben, 2026-10-13. After the third experiment, work in this order:
    World and 134 on EspoCRM, in 170 s against 273 s. See
    `docs/fourth-experiment.md`.
 
+### The real dataset is GitHub issues
+
+Ben, 2026-10-14. Step 1 of the plan uses `open-index/open-github-issues` from
+Hugging Face (ODC-By 1.0, so the figures and any copy must credit it). Of the
+three candidates it was on Hugging Face, permissively licensed, real, and shaped
+like the team tool the demo will be. The Public Jira Dataset (CC BY 4.0, on
+Zenodo) and Olist (CC BY-NC-SA) were the alternatives. Seven repositories make
+about 900,000 records in the `tracker` world. See `docs/fifth-experiment.md`.
+
 ### World is the system of record, and provides no LLM
 
 Ben, 2026-10-08. World holds records, rules, and history in the simplest and
@@ -108,12 +117,17 @@ measurement shows it is the limit.
 - `world/` is the engine: storage, validation, versions, history, and the HTTP
   protocol. It must not name a type, role, or rule from any one domain.
 - `worlds/` holds one definition per domain: `team` (the default), `crm`,
-  `lab`, and `enterprise` (the lab plus 197 generated types, for scale tests). A definition is data. Rules are expressions the engine evaluates and
+  `lab`, `enterprise` (the lab plus 197 generated types, for scale tests), and
+  `tracker` (real GitHub issues, for step 1 of the plan). A definition is data. Rules are expressions the engine evaluates and
   shows to clients, so never enforce a rule in Python. Extend the language in
   `world/rules.py` if a rule cannot be written. See `docs/writing-a-world.md`. `python3 -m bench --domain lab` selects the lab's tasks.
 - `python3 -m bench.scale` builds and times the million-record world in
   `artifacts/bench/scale`. It measures on a copy. Never write to the built
   database, because the agent tasks start from it.
+- `python3 -m bench.github` downloads the GitHub data, builds the tracker world
+  in `artifacts/bench/tracker`, and checks it against the world's constraints.
+  The same rule applies: never write to the built database. `bench/parquet.py`
+  reads the Parquet files with the standard library.
 - `docs/results/` keeps the raw output behind every figure in the experiment
   documents. `artifacts/` is scratch space and may be deleted. When a write-up
   cites a run, copy its file into `docs/results/` and list it in that README.

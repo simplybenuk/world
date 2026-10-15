@@ -66,6 +66,12 @@ class WorldStore:
         # Types whose constraints could be broken by a change to something they refer to,
         # plus the types through which such a type is reached.
         self._dependent = self._dependent_types()
+        # Every field any constraint can read, or None when that cannot be known.
+        self._constraint_reads: set[tuple[str, str]] | None = set()
+        for type_name, definition in self.types.items():
+            for constraint in definition.get("constraints", []):
+                found = rules.reads(constraint["check"], self.types, type_name, self.definition.actor_type)
+                self._constraint_reads = None if found is None or self._constraint_reads is None else self._constraint_reads | found
         self._keeper: sqlite3.Connection | None = None
         self._uri = str(path) == ":memory:"
         if self._uri:
@@ -437,6 +443,10 @@ class WorldStore:
         check(record, saved, operation, False)
         if operation != "update":
             return
+        changed = {field for field in {*record["data"], *(saved or {}).get("data", {})}
+                   if record["data"].get(field) != (saved or {}).get("data", {}).get(field)}
+        if self._constraint_reads is not None and not {(record["type"], field) for field in changed} & self._constraint_reads:
+            return  # no constraint reads what changed, so none that was met can now fail
         # A change can break a constraint written on a record that refers to this one,
         # directly or through other records. Follow the references back and re-check each.
         # Only types that have constraints can be broken, and only they or types leading to them need following.

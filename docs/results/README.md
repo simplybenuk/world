@@ -53,3 +53,12 @@ replaced the run without it (67 calls, 15 rejected), whose figures are only in
 | `agent-enterprise-claude-adjusted.json` | The "adjusted" task re-run on a clean build |
 | `agent-enterprise-control-claude.json` | Claude Code on EspoCRM with the same million records |
 | `control-enterprise.json` | EspoCRM's size, memory, metadata, and scripted tasks at that size |
+
+## Fifth experiment: real data
+
+| File | What it is |
+| --- | --- |
+| `build-tracker.json` | What the loader wrote from the GitHub data, and what it adjusted |
+| `verify-tracker.txt` | Every loaded issue judged by the tracker world's constraints |
+| `measure-tracker.txt` | Size and single operations on the tracker world |
+| `report-tracker.json` | The twenty tracker tasks solved by script, without a model |

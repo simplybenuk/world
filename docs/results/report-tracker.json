@@ -1,0 +1,196 @@
+{
+  "size": {},
+  "discovery": [
+    {
+      "actor": "ben",
+      "role": "admin",
+      "describe_bytes": 8452,
+      "all_records_bytes": 0,
+      "records": 0
+    },
+    {
+      "actor": "sundb",
+      "role": "member",
+      "describe_bytes": 8666,
+      "all_records_bytes": 0,
+      "records": 0
+    },
+    {
+      "actor": "oresoftware",
+      "role": "member",
+      "describe_bytes": 8678,
+      "all_records_bytes": 0,
+      "records": 0
+    },
+    {
+      "actor": "edison1105",
+      "role": "member",
+      "describe_bytes": 8676,
+      "all_records_bytes": 0,
+      "records": 0
+    }
+  ],
+  "tasks": [
+    {
+      "task": "read-issue",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 9421,
+      "milliseconds": 8.5,
+      "failures": []
+    },
+    {
+      "task": "read-pr",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 9448,
+      "milliseconds": 16.7,
+      "failures": []
+    },
+    {
+      "task": "read-labels",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 13257,
+      "milliseconds": 22.7,
+      "failures": []
+    },
+    {
+      "task": "count-label",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 8939,
+      "milliseconds": 211.0,
+      "failures": []
+    },
+    {
+      "task": "count-mine",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 8702,
+      "milliseconds": 15.9,
+      "failures": []
+    },
+    {
+      "task": "assigned",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 19461,
+      "milliseconds": 228.8,
+      "failures": []
+    },
+    {
+      "task": "count-milestone",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 8958,
+      "milliseconds": 22.8,
+      "failures": []
+    },
+    {
+      "task": "search-mine",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 12829,
+      "milliseconds": 13.9,
+      "failures": []
+    },
+    {
+      "task": "search-open",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 10082,
+      "milliseconds": 102.0,
+      "failures": []
+    },
+    {
+      "task": "search-comments",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 10160,
+      "milliseconds": 20.5,
+      "failures": []
+    },
+    {
+      "task": "comment",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 10391,
+      "milliseconds": 12.3,
+      "failures": []
+    },
+    {
+      "task": "label",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 12402,
+      "milliseconds": 25.2,
+      "failures": []
+    },
+    {
+      "task": "close",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 17538,
+      "milliseconds": 28.3,
+      "failures": []
+    },
+    {
+      "task": "open-issue",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 9261,
+      "milliseconds": 15.0,
+      "failures": []
+    },
+    {
+      "task": "triage",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 11117,
+      "milliseconds": 25.9,
+      "failures": []
+    },
+    {
+      "task": "duplicate",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 14734,
+      "milliseconds": 27.9,
+      "failures": []
+    },
+    {
+      "task": "milestone",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 32330,
+      "milliseconds": 38.5,
+      "failures": []
+    },
+    {
+      "task": "locked",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 9974,
+      "milliseconds": 7.9,
+      "failures": []
+    },
+    {
+      "task": "other-project",
+      "calls": 4,
+      "rejected": 1,
+      "bytes_read": 12033,
+      "milliseconds": 22.4,
+      "failures": []
+    },
+    {
+      "task": "assign",
+      "calls": 3,
+      "rejected": 1,
+      "bytes_read": 11785,
+      "milliseconds": 10.6,
+      "failures": []
+    }
+  ],
+  "recovery": []
+}

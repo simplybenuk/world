@@ -1,0 +1,19 @@
+{
+  "records": {
+    "Label": 485,
+    "Milestone": 301,
+    "Issue": 167038,
+    "Comment": 652161,
+    "Project": 7,
+    "Person": 76615
+  },
+  "adjusted": {
+    "open issues marked reopened, loaded as open": 188,
+    "closed issues with no close reason": 0,
+    "comments on an issue missing from the dataset, left out": 613
+  },
+  "rejected": {},
+  "built_at": "2026-10-14T21:48:28.646Z",
+  "seconds": 104,
+  "bytes": 3017125888
+}

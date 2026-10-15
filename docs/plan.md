@@ -34,6 +34,11 @@ evidence, because it tests World on real data rather than generated data.
 Done when: the comparison on real data is written up with its raw results in
 `docs/results/`, and Ben has decided whether the claim holds.
 
+Progress, 2026-10-14: the dataset is `open-index/open-github-issues`, loaded as
+the `tracker` world with about 900,000 records and twenty tasks. World's side
+is measured without a model. The third agent is opencode with Nemotron 3 Ultra.
+The EspoCRM control and the agent runs are still to do. See [the fifth experiment](fifth-experiment.md).
+
 ## Step 2: a private demo
 
 Needs Ben's decision on where it is hosted, under what domain, and who is
