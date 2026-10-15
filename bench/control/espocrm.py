@@ -49,9 +49,9 @@ CLOSED_RULE = """if (
 class Api:
     """JSON requests to EspoCRM as one user."""
 
-    def __init__(self, authorization=ADMIN, api_key=None, port=PORT):
+    def __init__(self, authorization=ADMIN, api_key=None, port=None):
         self.headers = {"X-Api-Key": api_key} if api_key else {"Authorization": authorization}
-        self.port = port
+        self.port = port or PORT  # read when called, so a second instance can set PORT
 
     def call(self, method, path, body=None):
         connection = HTTPConnection(HOST, self.port, timeout=60)

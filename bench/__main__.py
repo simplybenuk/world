@@ -127,7 +127,8 @@ def docker(*arguments):
 def control(args):
     """Size, self-description, and scripted tasks for EspoCRM, to set beside the World report."""
     espocrm = control_module()
-    compose = ["compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")]
+    compose = getattr(espocrm, "COMPOSE", ["docker", "compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")])[1:]
+    prefix = "world-control-tracker-" if "world-control-tracker" in compose else "world-control-"
     users = espocrm.setup()
     ids = espocrm.reset(users)
     version = espocrm.Api().ok("GET", "Settings")["version"]
@@ -136,7 +137,7 @@ def control(args):
     memory = {}
     for line in docker("stats", "--no-stream", "--format", "{{.Name}} {{.MemUsage}}").splitlines():
         name, used = line.split()[:2]
-        if name.startswith("world-control-"):
+        if name.startswith(prefix) and (prefix != "world-control-" or not name.startswith("world-control-tracker-")):
             memory[name] = used
     size = {
         f"EspoCRM {version} release archive, compressed": 42_630_269,  # EspoCRM-10.0.9.zip on its GitHub release

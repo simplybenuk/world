@@ -1,0 +1,192 @@
+{
+  "version": "10.0.10",
+  "size": {
+    "EspoCRM 10.0.10 release archive, compressed": 42630269,
+    "EspoCRM application files, installed": 171335465,
+    "EspoCRM container image (application, PHP, Apache)": 1069307525,
+    "MariaDB container image": 459514070,
+    "seeded database directory": 2768759537
+  },
+  "memory": {
+    "world-control-tracker-espocrm-1": "155.1MiB",
+    "world-control-tracker-db-1": "346.9MiB"
+  },
+  "world": {
+    "World engine, protocol, and tracker definition": 117500,
+    "Python interpreter and standard library": 65885211,
+    "World server, idle memory": 29794304
+  },
+  "discovery": [
+    {
+      "actor": "sundb",
+      "metadata_bytes": 197929
+    },
+    {
+      "actor": "oresoftware",
+      "metadata_bytes": 197929
+    }
+  ],
+  "tasks": [
+    {
+      "task": "read-issue",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 437,
+      "milliseconds": 6703.6,
+      "failures": []
+    },
+    {
+      "task": "read-pr",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 444,
+      "milliseconds": 6150.7,
+      "failures": []
+    },
+    {
+      "task": "read-labels",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 4532,
+      "milliseconds": 6287.1,
+      "failures": []
+    },
+    {
+      "task": "count-label",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 526,
+      "milliseconds": 106.1,
+      "failures": []
+    },
+    {
+      "task": "count-mine",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 22141,
+      "milliseconds": 154.8,
+      "failures": []
+    },
+    {
+      "task": "assigned",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 21793,
+      "milliseconds": 110.8,
+      "failures": []
+    },
+    {
+      "task": "count-milestone",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 729,
+      "milliseconds": 105.5,
+      "failures": []
+    },
+    {
+      "task": "search-mine",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 22025,
+      "milliseconds": 107.4,
+      "failures": []
+    },
+    {
+      "task": "search-open",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 309,
+      "milliseconds": 6260.0,
+      "failures": []
+    },
+    {
+      "task": "search-comments",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 585,
+      "milliseconds": 6776.6,
+      "failures": []
+    },
+    {
+      "task": "comment",
+      "calls": 5,
+      "rejected": 0,
+      "bytes_read": 22611,
+      "milliseconds": 6845.6,
+      "failures": []
+    },
+    {
+      "task": "label",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 552,
+      "milliseconds": 6652.2,
+      "failures": []
+    },
+    {
+      "task": "close",
+      "calls": 3,
+      "rejected": 0,
+      "bytes_read": 5190,
+      "milliseconds": 6780.3,
+      "failures": []
+    },
+    {
+      "task": "open-issue",
+      "calls": 4,
+      "rejected": 0,
+      "bytes_read": 22568,
+      "milliseconds": 121.6,
+      "failures": []
+    },
+    {
+      "task": "triage",
+      "calls": 7,
+      "rejected": 0,
+      "bytes_read": 23688,
+      "milliseconds": 6474.1,
+      "failures": []
+    },
+    {
+      "task": "duplicate",
+      "calls": 6,
+      "rejected": 0,
+      "bytes_read": 25430,
+      "milliseconds": 6838.3,
+      "failures": []
+    },
+    {
+      "task": "milestone",
+      "calls": 5,
+      "rejected": 0,
+      "bytes_read": 13261,
+      "milliseconds": 6864.6,
+      "failures": []
+    },
+    {
+      "task": "locked",
+      "calls": 2,
+      "rejected": 0,
+      "bytes_read": 457,
+      "milliseconds": 8401.6,
+      "failures": []
+    },
+    {
+      "task": "other-project",
+      "calls": 4,
+      "rejected": 1,
+      "bytes_read": 622,
+      "milliseconds": 6755.1,
+      "failures": []
+    },
+    {
+      "task": "assign",
+      "calls": 4,
+      "rejected": 1,
+      "bytes_read": 600,
+      "milliseconds": 8300.7,
+      "failures": []
+    }
+  ],
+  "mistakes": []
+}

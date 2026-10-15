@@ -128,6 +128,9 @@ measurement shows it is the limit.
   in `artifacts/bench/tracker`, and checks it against the world's constraints.
   The same rule applies: never write to the built database. `bench/parquet.py`
   reads the Parquet files with the standard library.
+- `bench/control/tracker.py` builds the tracker's control in a second EspoCRM
+  on port 8792 (`docker compose -p world-control-tracker`). See
+  `docs/fifth-experiment.md`.
 - `docs/results/` keeps the raw output behind every figure in the experiment
   documents. `artifacts/` is scratch space and may be deleted. When a write-up
   cites a run, copy its file into `docs/results/` and list it in that README.

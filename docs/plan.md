@@ -37,7 +37,9 @@ Done when: the comparison on real data is written up with its raw results in
 Progress, 2026-10-14: the dataset is `open-index/open-github-issues`, loaded as
 the `tracker` world with about 900,000 records and twenty tasks. World's side
 is measured without a model. The third agent is opencode with Nemotron 3 Ultra.
-The EspoCRM control and the agent runs are still to do. See [the fifth experiment](fifth-experiment.md).
+The EspoCRM control holds the same records. The agent runs are still to do. The
+CRM and lab worlds keep their five tasks, so their results stay comparable with
+the earlier experiments. See [the fifth experiment](fifth-experiment.md).
 
 ## Step 2: a private demo
 

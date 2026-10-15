@@ -62,3 +62,4 @@ replaced the run without it (67 calls, 15 rejected), whose figures are only in
 | `verify-tracker.txt` | Every loaded issue judged by the tracker world's constraints |
 | `measure-tracker.txt` | Size and single operations on the tracker world |
 | `report-tracker.json` | The twenty tracker tasks solved by script, without a model |
+| `control-tracker.json` | EspoCRM's size, memory, metadata, and the twenty tasks solved by script |

@@ -3,8 +3,8 @@
 In progress. This is step 1 of [the plan](plan.md). The earlier experiments used
 seeded or generated records. This one loads real public data, so the text,
 distributions, and mess are those of a working team. So far World's side is
-built and measured without a model, and a third agent is ready. The EspoCRM
-control and the agent runs are still to do.
+built and measured without a model, the EspoCRM control holds the same
+records, and a third agent is ready. The agent runs are still to do.
 
 ## The data
 
@@ -191,13 +191,70 @@ A trial of two tasks gave a correct label. The checker marked the other run
 wrong although the answer was right: it described issue 3067 instead of quoting
 its title. The checker now accepts either.
 
+## The control
+
+EspoCRM 10.0.10 holds the same records in a second instance on port 8792, so
+that its description holds only the tracker. `bench/control/tracker.py` builds
+it through the admin API, as an administrator would:
+
+- **Entities.** Six custom entities with the same fields. Labels, assignees, and
+  maintainers are many-to-many links with list fields.
+- **Maintainers.** Each project is a team, and its maintainers are members. A
+  Maintainer role lets them change their team's issues, labels, and milestones.
+- **Contributors.** A Contributor role may open issues and comment. Field-level
+  rights stop it changing assignees, labels, milestones, and locks.
+- **Rules.** Before-save scripts hold the eight issue constraints and the rule
+  for locked issues. Each refusal was checked to refuse the same request as
+  World.
+
+```sh
+WORLD_CONTROL_PORT=8792 docker compose -p world-control-tracker -f bench/control/compose.yaml up -d
+python3 -m bench.control.tracker setup
+python3 -m bench.control.tracker load
+python3 -m bench control --domain tracker
+```
+
+The loader writes the records `bench.github` produces straight into MariaDB, in
+11.5 minutes: 167,038 issues and 652,161 comments, the same as World. It keeps a
+copy of the tables a task can change, so each task starts from the loaded state.
+A reset takes about 20 seconds.
+
+Three things differ from World:
+
+- **Authors.** World fills in the author from the token. In EspoCRM the client
+  must name the author, and the checker accepts either the named author or the
+  user who created the record.
+- **An author's own issue.** World lets an author edit and close their own
+  issue. EspoCRM's "own" means the assigned user, which the loaded issues do not
+  have, so authors cannot. No task depends on it.
+- **Titles.** EspoCRM indexes an entity's name, and MariaDB's key limit allows
+  760 characters. The longest title is 754.
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Self-description | 8.7 KB, about 2,200 tokens | 198 KB, about 49,000 tokens |
+| Data | 3,017 MB, with a history event for every record | 1,909 MB, with no history for the loaded rows |
+| Software | 118 KB, plus Python's 66 MB | 1.53 GB as two container images |
+| Memory while idle | 30 MB | 502 MB across two containers |
+
+Both sides answer all twenty tasks correctly by script:
+
+| | World | EspoCRM |
+| --- | --- | --- |
+| Calls, scripted shortest path | 57 | 74 |
+| Time, all twenty | 0.9 s | 96.8 s |
+
+The World count includes reading its description once per task, and
+EspoCRM's does not. Most of EspoCRM's time is finding an issue by its number.
+That takes about 6.5 seconds, probably because EspoCRM sorts every list by
+creation time and does not index the number. That is how it ships, so an agent
+will pay the same cost.
+
 ## Still to do
 
-1. **The control.** Load the same records into EspoCRM as custom entities, and
-   solve and check the same twenty tasks there.
-2. **The runs.** Each agent, each task, three times, on both sides.
+The runs: each agent, each task, three times, on both sides.
 
 ## Raw results
 
 In `docs/results/`: `build-tracker.json`, `verify-tracker.txt`,
-`measure-tracker.txt`, and `report-tracker.json`.
+`measure-tracker.txt`, `report-tracker.json`, and `control-tracker.json`.
