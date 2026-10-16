@@ -342,6 +342,13 @@ class WorldStore:
             sql, params = sql + " LIMIT ?", [*params, limit]
         return [self._decode(row) for row in connection.execute(sql, params)]
 
+    def actor_exists(self, actor_id: Any) -> bool:
+        """Whether someone in the world has this id. For issuing access, so it reads no record and leaves no audit line."""
+        if not isinstance(actor_id, str) or not actor_id:
+            return False
+        with self._transaction() as connection:
+            return self._raw(connection, self.definition.actor_type, actor_id) is not None
+
     def _actor(self, connection: sqlite3.Connection, actor_id: str) -> dict[str, Any]:
         if not isinstance(actor_id, str) or not actor_id:
             raise WorldError(401, "invalid_actor", "A valid actor is required.")

@@ -52,8 +52,9 @@ The demo is World's first user and lives in a separate repository. Whatever
 another product built on World would also need belongs in World: the engine,
 the protocol, the MCP server, agent tokens and `person via agent`, and changing
 a world's definition while it runs. Accounts, teams, sign-up, token pages, the
-team-tool definition, the audit page people see, and hosting belong in the
-demo. When the demo has to work around World, fix World.
+OAuth authorization server with its sign-in and consent page, the team-tool
+definition, the audit page people see, and hosting belong in the demo. World
+checks tokens and names its authorization server; it shows no page. When the demo has to work around World, fix World.
 
 The name stays World (Ben, 2026-10-16). It sounds bigger than the thing is,
 which is the joke: like Phoebe's tattoo of the whole world in *Friends*, it is

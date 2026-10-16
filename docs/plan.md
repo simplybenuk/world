@@ -54,10 +54,14 @@ on World would need, such as the MCP server, is done in World.
 1. **A standard way for agents to connect.** Offer the protocol as a Model
    Context Protocol (MCP) server, so connecting an agent means adding a
    connector, not pasting a prompt. Done in World on 2026-10-16: `POST /mcp`
-   with nine general tools and a bearer token. Chat apps' connectors sign in
-   with OAuth, which is still to do, and belongs in World too.
+   with nine general tools and a bearer token. World's part of OAuth is done
+   too: it names its authorization server in protected resource metadata, and
+   lets that server issue, list, and revoke expiring agent tokens. The
+   authorization server, with its sign-in and consent page, belongs in the
+   demo.
 2. **Accounts and one world per team.** Sign-up, inviting members, and letting
-   people issue and revoke tokens for their own agents.
+   people issue and revoke tokens for their own agents. This includes the OAuth
+   authorization server that chat apps' connectors sign in through.
 3. **Changing a world while it runs.** A team will want its own statuses and
    fields. A world's definition must become data that can change safely, with
    existing records migrated and the change in the audit. Start from the JSON
