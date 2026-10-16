@@ -129,18 +129,21 @@ class AccessTokens:
             self._save_agents()
             return token
 
+    def has_grant(self, actor, agent):
+        """Whether this agent may act for this actor now."""
+        return any(grant["agent"] == agent for grant in self.grants(actor))
+
     def revoke(self, token=None, actor=None, agent=None):
-        """Stop a token working, or every token issued to this actor's agent. Returns how many stopped."""
+        """Stop a token working, or every token issued to this actor's agent. Returns the [actor, agent] of each stopped."""
         with self._lock:
             self._reload_agents()
             stopped = [credential for credential, issued in self.agents.items()
                        if (token is not None and hmac.compare_digest(credential, token))
                        or (token is None and issued[:2] == [actor, agent])]
-            for credential in stopped:
-                del self.agents[credential]
+            pairs = [self.agents.pop(credential)[:2] for credential in stopped]
             if stopped:
                 self._save_agents()
-            return len(stopped)
+            return pairs
 
     def grants(self, actor=None):
         """Which agents may act for whom, and until when; never the tokens themselves."""
@@ -340,23 +343,39 @@ class WorldHandler(BaseHTTPRequestHandler):
             return self._respond(200, {"grants": access.grants(parse_qs(query).get("actor", [None])[0])})
         if method == "POST":
             actor, agent, expires_in = body.get("actor"), body.get("agent"), body.get("expires_in")
-            if not self.server.store.actor_exists(actor):
-                raise ClientError(422, "unknown_actor", "No one in this world has that id.")
+            by, via = self._granter(body, actor)
+            new = not access.has_grant(actor, agent)
             try:
                 token = access.issue(actor, agent, expires_in, seeded=False)
             except ValueError as error:
                 raise ClientError(422, "invalid_access", str(error)) from None
+            if new:  # renewing an expiring token is not new access, so it adds no line
+                self.server.store.record_access(by, "gave", actor, agent, "", by_agent=via)
             issued = {"access_token": token, "token_type": "Bearer", "actor": actor, "agent": agent}
             return self._respond(201, {**issued, **({"expires_in": expires_in} if expires_in is not None else {})})
         if method == "DELETE":
             if isinstance(body.get("token"), str):
+                by, via = self._granter(body, None)
                 stopped = access.revoke(token=body["token"])
             elif isinstance(body.get("actor"), str) and isinstance(body.get("agent"), str):
+                by, via = self._granter(body, body["actor"])
                 stopped = access.revoke(actor=body["actor"], agent=body["agent"])
             else:
                 raise ClientError(422, "invalid_access", 'Name a "token", or an "actor" and an "agent".')
-            return self._respond(200, {"revoked": stopped})
+            for actor, agent in sorted({tuple(pair) for pair in stopped}):
+                if not access.has_grant(actor, agent):
+                    self.server.store.record_access(by or actor, "revoked", actor, agent, "", by_agent=via)
+            return self._respond(200, {"revoked": len(stopped)})
         raise ClientError(405, "method_not_allowed", "Use GET, POST, or DELETE.")
+
+    def _granter(self, body, actor):
+        """Who gave or revoked access, for the audit: "by", or else the person acted for; and "via", the software they used."""
+        by, via = body.get("by", actor), body.get("via")
+        if by is not None and not self.server.store.actor_exists(by):
+            raise ClientError(422, "unknown_actor", "No one in this world has that id.")
+        if via is not None and (not isinstance(via, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", via)):
+            raise ClientError(422, "invalid_access", "via is the name of the software used, up to 64 letters, digits, dots, hyphens, or underscores.")
+        return by, via
 
     def _actor(self):
         authorization = self.headers.get("Authorization", "")
@@ -535,10 +554,18 @@ def main():
         saved_url = data_dir / "client-url"
         base = args.url or (saved_url.read_text().strip() if saved_url.is_file() else f"http://localhost:{args.port}")
         if args.agent:
+            new = not access.has_grant(args.actor, args.agent)
             try:
-                print(access.issue(args.actor, args.agent))
+                token = access.issue(args.actor, args.agent)
             except ValueError as error:
                 parser.error(str(error))
+            if new:
+                store = WorldStore(data_dir / "world.sqlite3", definition)
+                try:
+                    store.record_access(args.actor, "gave", args.actor, args.agent, "at the command line")
+                finally:
+                    store.close()
+            print(token)
             return
         print(base.rstrip("/") + "/#token=" + access.tokens[args.actor])
         return

@@ -1,6 +1,8 @@
 """How an authorization server gives agents access to a world, and how an MCP client finds it."""
 
 from http.client import HTTPConnection
+import subprocess
+import sys
 import json
 from pathlib import Path
 import tempfile
@@ -103,6 +105,33 @@ class AccessTests(unittest.TestCase):
         self.assertEqual((status, body["error"]["code"]), (422, "invalid_access"))
         status, body, _ = self.request("POST", "/api/access", {"actor": "maya", "agent": "claude", "expires_in": 5}, key)
         self.assertEqual(status, 422)
+
+    def test_giving_and_revoking_access_is_in_the_audit(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        for _ in range(2):  # renewing is not new access, so it adds no second line
+            self.request("POST", "/api/access", {"actor": "maya", "agent": "claude-ai", "expires_in": 3600, "via": "teamworld"}, key)
+        self.request("DELETE", "/api/access", {"actor": "maya", "agent": "claude-ai", "by": "ben", "via": "teamworld"}, key)
+        status, lines, _ = self.request("GET", "/api/audit/Person/maya", token=self.access.tokens["maya"])
+        access = [line for line in lines.splitlines() if " access " in line]
+        self.assertEqual(len(access), 2, lines)
+        self.assertRegex(access[0], r"maya via teamworld +gave access +Person maya +claude-ai may act as maya\.$")
+        self.assertRegex(access[1], r"ben via teamworld +revoked access +Person maya +claude-ai may no longer act as maya\.$")
+        status, lines, _ = self.request("GET", "/api/audit", token=self.access.tokens["maya"])
+        self.assertIn("gave access", lines)
+        status, body, _ = self.request("POST", "/api/access", {"actor": "maya", "agent": "claude-ai", "by": "nobody"}, key)
+        self.assertEqual(status, 422)
+        self.assertFalse(self.access.has_grant("maya", "claude-ai"))
+
+    def test_access_given_at_the_command_line_is_in_the_audit(self):
+        self.start()
+        command = [sys.executable, "-m", "world.server", "access", "--data-dir", str(self.data_dir), "--actor", "ben", "--agent", "codex"]
+        first = subprocess.run(command, capture_output=True, text=True, check=True).stdout.strip()
+        again = subprocess.run(command, capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(first, again)
+        lines = [line for line in self.store.audit("ben", "Person", "ben") if "gave access" in line]
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].endswith("codex may act as ben at the command line."))
 
     def test_an_expired_token_stops_working(self):
         self.start()
