@@ -53,3 +53,26 @@ replaced the run without it (67 calls, 15 rejected), whose figures are only in
 | `agent-enterprise-claude-adjusted.json` | The "adjusted" task re-run on a clean build |
 | `agent-enterprise-control-claude.json` | Claude Code on EspoCRM with the same million records |
 | `control-enterprise.json` | EspoCRM's size, memory, metadata, and scripted tasks at that size |
+
+## Fifth experiment: real data
+
+| File | What it is |
+| --- | --- |
+| `build-tracker.json` | What the loader wrote from the GitHub data, and what it adjusted |
+| `verify-tracker.txt` | Every loaded issue judged by the tracker world's constraints |
+| `measure-tracker.txt` | Size and single operations on the tracker world |
+| `report-tracker.json` | The twenty tracker tasks solved by script, without a model |
+| `control-tracker.json` | EspoCRM's size, memory, metadata, and the twenty tasks solved by script |
+| `agent-tracker-codex.json` | Codex on World's tracker, three runs of each task |
+| `agent-tracker-control-codex.json` | Codex on EspoCRM's tracker |
+| `agent-tracker-claude.json` | Claude Code on World's tracker |
+| `agent-tracker-control-claude.json` | Claude Code on EspoCRM's tracker |
+| `agent-tracker-opencode.json` | opencode with MiMo 2.6 Flash on World's tracker |
+| `agent-tracker-control-opencode.json` | opencode on EspoCRM's tracker: the 25 runs it finished, rebuilt from the log |
+| `agent-tracker-opencode-mimo-first.json` | opencode's first World batch, run while orphaned agents held the free tier, and replaced |
+| `compare-tracker.txt` | `python3 -m bench.compare --domain tracker codex claude opencode` |
+
+The tracker agent files are as `bench.compare` judged them again with the final
+checkers. A run whose judgment changed keeps the old one in `failures_when_run`.
+The EspoCRM opencode file has no answers or bytes read, because its batch
+stopped before it saved them.

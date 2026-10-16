@@ -2,7 +2,7 @@
 
 from importlib import import_module
 
-AVAILABLE = ("team", "crm", "lab", "enterprise")
+AVAILABLE = ("team", "crm", "lab", "enterprise", "tracker")
 
 
 def load(name: str):

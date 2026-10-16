@@ -1,5 +1,5 @@
 # The control for the comparison: an existing open-source CRM, as its project ships it.
-# Local trial only. The passwords are fixtures and the port binds to loopback.
+# A second copy runs beside it with `-p NAME` and WORLD_CONTROL_PORT set. Local trial only. The passwords are fixtures and the port binds to loopback.
 name: world-control
 services:
   db:
@@ -26,13 +26,13 @@ services:
       ESPOCRM_DATABASE_PASSWORD: control-db
       ESPOCRM_ADMIN_USERNAME: admin
       ESPOCRM_ADMIN_PASSWORD: control-admin
-      ESPOCRM_SITE_URL: http://127.0.0.1:8791
+      ESPOCRM_SITE_URL: http://127.0.0.1:${WORLD_CONTROL_PORT:-8791}
     volumes:
       - data:/var/www/html/data
       - custom:/var/www/html/custom
       - client-custom:/var/www/html/client/custom
     ports:
-      - "127.0.0.1:8791:80"
+      - "127.0.0.1:${WORLD_CONTROL_PORT:-8791}:80"
 volumes:
   db:
   data:

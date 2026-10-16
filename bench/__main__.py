@@ -13,18 +13,19 @@ import os
 from pathlib import Path
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 
-from . import crm, enterprise, lab
+from . import crm, enterprise, lab, tracker
 from .harness import running
 from world.store import WorldStore
 import worlds
 
-DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise}
-CONTROLS = {"crm": "espocrm", "lab": "lab", "enterprise": "enterprise"}
+DOMAINS = {"crm": crm, "lab": lab, "enterprise": enterprise, "tracker": tracker}
+CONTROLS = {"crm": "espocrm", "lab": "lab", "enterprise": "enterprise", "tracker": "tracker"}
 domain = crm  # set from --domain
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,25 +67,31 @@ def measure_size():
     }
 
 
+def source():
+    """The database a large world starts from, or None for a world seeded from its definition."""
+    return getattr(domain, "SOURCE", None)
+
+
 def measure_discovery():
     rows = []
-    with running(domain.WORLD) as world:
+    with running(domain.WORLD, source()) as world:
         for actor in world.store.definition.actors:
             client = world.client(actor)
             sizes = []
-            for path in ("/api/world", "/api/records"):
+            # Reading every record of a large world is not a step any client would take.
+            for path in ("/api/world",) if source() else ("/api/world", "/api/records"):
                 client.get(path)
                 sizes.append(world.requests[-1][3])
             role = world.store.get_record(actor, "Person", actor)["data"]["role"]
-            rows.append({"actor": actor, "role": role, "describe_bytes": sizes[0], "all_records_bytes": sizes[1],
-                         "records": len(world.store.list_records(actor))})
+            rows.append({"actor": actor, "role": role, "describe_bytes": sizes[0], "all_records_bytes": sizes[1] if len(sizes) > 1 else 0,
+                         "records": 0 if source() else len(world.store.list_records(actor))})
     return rows
 
 
 def measure_tasks():
     rows = []
     for task in domain.TASKS:
-        with running(domain.WORLD) as world:
+        with running(domain.WORLD, source()) as world:
             started = time.perf_counter()
             answer = task.solve(world.client(task.actor))
             seconds = time.perf_counter() - started
@@ -121,7 +128,8 @@ def docker(*arguments):
 def control(args):
     """Size, self-description, and scripted tasks for EspoCRM, to set beside the World report."""
     espocrm = control_module()
-    compose = ["compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")]
+    compose = getattr(espocrm, "COMPOSE", ["docker", "compose", "-f", str(ROOT / "bench" / "control" / "compose.yaml")])[1:]
+    prefix = "world-control-tracker-" if "world-control-tracker" in compose else "world-control-"
     users = espocrm.setup()
     ids = espocrm.reset(users)
     version = espocrm.Api().ok("GET", "Settings")["version"]
@@ -130,7 +138,7 @@ def control(args):
     memory = {}
     for line in docker("stats", "--no-stream", "--format", "{{.Name}} {{.MemUsage}}").splitlines():
         name, used = line.split()[:2]
-        if name.startswith("world-control-"):
+        if name.startswith(prefix) and (prefix != "world-control-" or not name.startswith("world-control-tracker-")):
             memory[name] = used
     size = {
         f"EspoCRM {version} release archive, compressed": 42_630_269,  # EspoCRM-10.0.9.zip on its GitHub release
@@ -209,7 +217,7 @@ def table(headers, rows):
 
 def report(args):
     domain.SEEDED.update(seeded_ids())
-    result = {"size": measure_size(), "discovery": measure_discovery(), "tasks": measure_tasks(), "recovery": measure_recovery()}
+    result = {"size": {} if source() else measure_size(), "discovery": measure_discovery(), "tasks": measure_tasks(), "recovery": measure_recovery()}
     print("## Size\n")
     print(table(["Part", "Bytes"], [(name, f"{size:,}") for name, size in result["size"].items()]))
     print("\n## Discovery cost\n")
@@ -272,7 +280,7 @@ Finish with a short plain-text answer: what you found or changed, or why you cou
 @contextmanager
 def world_target(task, label):
     """A fresh World for one task: its prompt, its meter, and its checker."""
-    with running(domain.WORLD, getattr(domain, "SOURCE", None)) as world:
+    with running(domain.WORLD, source()) as world:
         def finish(answer):
             return task.check(world.store, answer), not any(DEFAULT_REASON in line for line in recent_audit(world.store))
         yield PROMPT.format(url=world.url, token=world.agent_token(task.actor, label), task=task.prompt), world, finish
@@ -296,33 +304,51 @@ def agent(args):
     users = None
     if args.control:
         users = control_module().setup()
+    name = f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json"
     rows = []
     for run in range(1, args.repeat + 1):
         for task in tasks:
-            target = control_target(task, users) if args.control else world_target(task, args.label)
-            with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
-                answer_file = Path(workspace) / "answer.txt"
-                command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
-                environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
-                started = time.monotonic()
-                try:
-                    process = subprocess.run(command, input=prompt, capture_output=True, text=True, timeout=args.timeout,
-                                             cwd=workspace, env=environment)
-                    output, timed_out = process.stdout, False
-                except subprocess.TimeoutExpired:
-                    output, timed_out = "", True
-                seconds = round(time.monotonic() - started, 1)
-                answer = answer_file.read_text() if answer_file.exists() else output
-                failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
-                if not meter.requests:
-                    failures = ["The agent made no requests."]
-                rows.append({
-                    "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
-                    "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
-                    "audit": [] if args.control else recent_audit(meter.store),
-                })
-                print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
-                      f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
+            discarded = 0
+            while True:
+                target = control_target(task, users) if args.control else world_target(task, args.label)
+                with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
+                    answer_file = Path(workspace) / "answer.txt"
+                    command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
+                    if args.command and (ROOT / command[0]).is_file():
+                        command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
+                    environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
+                    started = time.monotonic()
+                    # Its own process group, so that a timeout stops everything the agent started.
+                    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                               text=True, cwd=workspace, env=environment, start_new_session=True)
+                    try:
+                        output, timed_out = process.communicate(prompt, timeout=args.timeout)[0], False
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.communicate()
+                        output, timed_out = "", True
+                    seconds = round(time.monotonic() - started, 1)
+                    if not timed_out and process.returncode == UNAVAILABLE and discarded < 6:
+                        # The agent's model provider failed, which says nothing about the records. Start again from the beginning.
+                        discarded += 1
+                        print(f"{task.id} run {run}: provider unavailable, attempt {discarded} discarded "
+                              f"({len(meter.requests)} calls)", flush=True)
+                        time.sleep(min(60 * 2 ** (discarded - 1), 900))
+                        continue
+                    answer = answer_file.read_text() if answer_file.exists() else output
+                    failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
+                    if not meter.requests and not timed_out:
+                        failures = ["The agent made no requests."]
+                    rows.append({
+                        "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
+                        "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
+                        "audit": [] if args.control else recent_audit(meter.store), "discarded_attempts": discarded,
+                    })
+                    print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
+                          f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
+                    OUTPUT.mkdir(parents=True, exist_ok=True)
+                    (OUTPUT / name).write_text(json.dumps(rows, indent=2) + "\n")  # so a batch that dies keeps the runs it finished
+                    break
     print()
     reasons = {True: "yes", False: "no", None: "n/a"}
     print(table(["Task", "Run", "Correct", "Calls", "Rejected", "Bytes read", "Rough tokens", "Seconds", "Gave its own reasons"], [
@@ -330,10 +356,11 @@ def agent(args):
          f"{tokens(row['bytes_read']):,}", row["seconds"], reasons[row["own_reasons"]]) for row in rows]))
     print(f"\n{sum(row['correct'] for row in rows)} of {len(rows)} task runs correct, {sum(row['calls'] for row in rows)} calls, "
           f"{sum(row['rejected'] for row in rows)} rejected.")
-    save(f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json", rows)
+    save(name, rows)
 
 
 DEFAULT_REASON = "Reason: Changed through the World client"
+UNAVAILABLE = 75  # an agent command exits with this when its model provider failed, and the run is repeated from the start
 
 
 def recent_audit(store):
@@ -347,7 +374,8 @@ def main():
     runner = commands.add_parser("agent", help="Run the tasks with an agent; this uses that agent's model account")
     commands.add_parser("control", help="Measure the EspoCRM control without a model")
     runner.add_argument("--command", help="Agent command. It receives the prompt on standard input and WORLD_ANSWER_FILE in its "
-                        "environment. Its answer is that file, or else its standard output. Default: codex exec")
+                        "environment. Its answer is that file, or else its standard output. It exits 75 when its model "
+                        "provider failed, and the run is repeated from the start. Default: codex exec")
     runner.add_argument("--control", action="store_true", help="Run against EspoCRM instead of World")
     runner.add_argument("--repeat", type=int, default=1, help="Run every task this many times")
     runner.add_argument("--task", action="append", help="Run only this task; repeatable")

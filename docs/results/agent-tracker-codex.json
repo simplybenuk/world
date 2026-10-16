@@ -1,0 +1,2887 @@
+[
+  {
+    "task": "read-issue",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 22824,
+    "seconds": 23.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14102
+      ]
+    ],
+    "answer": "You reported that GET * returned nil for a key named \u201c::1\u201d, while GET \"::1\" returned its value.\n\nRedis issue #3067 is closed. It was closed on February 5, 2016, and labeled \u201cexpected behavior.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue duckdb-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue etcd-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue react-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue redis-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue typescript-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue vue-core-3067  Found by a query.",
+      "2026-10-15T07:10:42.583Z  oresoftware via codex  viewed  Issue vue-docs-3067  Found by a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person tiagokepe  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person xiang90  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person jimfb  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person oresoftware  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person zpddg4gta8xkpmcd  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project vue-core  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person ladyyang  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Project vue-docs  Included in a query.",
+      "2026-10-15T07:10:43.432Z  oresoftware via codex  viewed  Person bryceandy  Included in a query."
+    ]
+  },
+  {
+    "task": "read-pr",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 20794,
+    "seconds": 21.0,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12084
+      ]
+    ],
+    "answer": "Redis pull request #13512 was opened by oranagra and merged on September 12, 2024.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:11:08.196Z  sundb via codex  viewed  Issue duckdb-13512  Found by a query.",
+      "2026-10-15T07:11:08.196Z  sundb via codex  viewed  Issue etcd-13512  Found by a query.",
+      "2026-10-15T07:11:08.196Z  sundb via codex  viewed  Issue react-13512  Found by a query.",
+      "2026-10-15T07:11:08.196Z  sundb via codex  viewed  Issue redis-13512  Found by a query.",
+      "2026-10-15T07:11:08.196Z  sundb via codex  viewed  Issue typescript-13512  Found by a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Person vyadav12  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Person zjmainstay  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Person gaearon  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Person oranagra  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:11:09.995Z  sundb via codex  viewed  Person durza007  Included in a query."
+    ]
+  },
+  {
+    "task": "read-labels",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 13273,
+    "seconds": 15.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        4581
+      ]
+    ],
+    "answer": "vuejs/core issue #14761 has three labels: scope: suspense, has workaround, and :hammer: p3-minor-bug.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:11:38.079Z  edison1105 via codex  viewed  Issue vue-core-14761  Found by a query.",
+      "2026-10-15T07:11:38.184Z  edison1105 via codex  viewed  Label vue-core-label-scope-suspense  Included in a query.",
+      "2026-10-15T07:11:38.184Z  edison1105 via codex  viewed  Label vue-core-label-has-workaround  Included in a query.",
+      "2026-10-15T07:11:38.184Z  edison1105 via codex  viewed  Label vue-core-label-hammer-p3-minor-bug  Included in a query."
+    ]
+  },
+  {
+    "task": "count-label",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 1,
+    "bytes_read": 9877,
+    "seconds": 45.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        400,
+        638
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        534
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ]
+    ],
+    "answer": "There are 35 open issues in redis/redis labelled \u201ccrash report\u201d, excluding pull requests.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:12:11.119Z  sundb via codex  viewed  Project redis  Found by a query."
+    ]
+  },
+  {
+    "task": "count-mine",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 8718,
+    "seconds": 17.2,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ]
+    ],
+    "answer": "You\u2019ve opened 108 issues across all projects; 6 are still open.",
+    "own_reasons": true,
+    "audit": []
+  },
+  {
+    "task": "assigned",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 20025,
+    "seconds": 18.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11329
+      ]
+    ],
+    "answer": "You have 2 open issues assigned to you in redis/redis:\n\n#14266 \u2014 [CRASH] RedisModule_Yield crash at whileBlockedCron\n#14382 \u2014 [CRASH] Redis 8.2.1 crashed by signal: 11, si_code: 128",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:13:22.294Z  sundb via codex  viewed  Issue redis-14266  Found by a query.",
+      "2026-10-15T07:13:22.294Z  sundb via codex  viewed  Issue redis-14382  Found by a query.",
+      "2026-10-15T07:13:22.352Z  sundb via codex  viewed  Project redis  Included in a query."
+    ]
+  },
+  {
+    "task": "count-milestone",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 9522,
+    "seconds": 25.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        803
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ]
+    ],
+    "answer": "The redis/redis milestone \u201cRedis 6.0.x\u201d contains 32 issues and pull requests in total, with 3 still open.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:13:49.937Z  sundb via codex  viewed  Milestone redis-milestone-9  Found by a query.",
+      "2026-10-15T07:13:50.002Z  sundb via codex  viewed  Project redis  Included in a query."
+    ]
+  },
+  {
+    "task": "search-mine",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 17456,
+    "seconds": 15.4,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        8762
+      ]
+    ],
+    "answer": "Your TypeScript issue is #19584, \u201chook into `tsc --watch` using stdout -- the unix way.\u201d It is still open.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:14:13.640Z  oresoftware via codex  viewed  Issue typescript-19558  Found by a query.",
+      "2026-10-15T07:14:13.640Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:14:13.640Z  oresoftware via codex  viewed  Issue typescript-19757  Found by a query.",
+      "2026-10-15T07:14:13.640Z  oresoftware via codex  viewed  Issue typescript-33151  Found by a query.",
+      "2026-10-15T07:14:13.889Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "search-open",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 42461,
+    "seconds": 19.0,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        33769
+      ]
+    ],
+    "answer": "Yes\u2014vuejs/core issue #9782 is open: \u201cTeleport has encountered an error when its target is empty.\u201d It is an issue, not a pull request.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-11022  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-11410  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-11910  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-12287  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-12702  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-2047  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-2669  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-4737  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-5577  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-5603  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-5833  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-5864  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-5966  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-6207  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-7312  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-7528  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-7595  Found by a query.",
+      "2026-10-15T07:14:38.032Z  edison1105 via codex  viewed  Issue vue-core-9782  Found by a query."
+    ]
+  },
+  {
+    "task": "search-comments",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 10445,
+    "seconds": 21.1,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        1735
+      ]
+    ],
+    "answer": "oranagra mentioned valgrind in a comment on Redis #9767 on November 10, 2021, discussing test timeouts and running tests with `--clients 1`.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:15:03.540Z  sundb via codex  viewed  Comment comment-965511125  Found by a query.",
+      "2026-10-15T07:15:03.607Z  sundb via codex  viewed  Issue redis-9767  Included in a query.",
+      "2026-10-15T07:15:03.607Z  sundb via codex  viewed  Person oranagra  Included in a query."
+    ]
+  },
+  {
+    "task": "comment",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 21057,
+    "seconds": 25.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11980
+      ],
+      [
+        "POST",
+        "/api/records/Comment",
+        201,
+        355
+      ]
+    ],
+    "answer": "Added your comment to redis issue 15058 as ORESoftware: \u201cI see the same with 8.6.2 on Debian 12.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:15:25.202Z  oresoftware via codex  viewed  Issue duckdb-15058  Found by a query.",
+      "2026-10-15T07:15:25.202Z  oresoftware via codex  viewed  Issue etcd-15058  Found by a query.",
+      "2026-10-15T07:15:25.202Z  oresoftware via codex  viewed  Issue react-15058  Found by a query.",
+      "2026-10-15T07:15:25.202Z  oresoftware via codex  viewed  Issue redis-15058  Found by a query.",
+      "2026-10-15T07:15:25.202Z  oresoftware via codex  viewed  Issue typescript-15058  Found by a query.",
+      "2026-10-15T07:15:25.740Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:15:25.740Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:15:25.740Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:15:25.740Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:15:25.740Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:15:30.257Z  oresoftware via codex  created  Comment comment-5f85852eada946da8863dd14c711633c  issue \"redis-15058\"; body \"I see the same with 8.6.2 on Debian 12.\"; posted_on \"2026-10-15\"; author \"oresoftware\". Reason: ORESoftware requested this comment on redis issue 15058."
+    ]
+  },
+  {
+    "task": "label",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 38902,
+    "seconds": 25.4,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28182
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15205",
+        200,
+        1749
+      ]
+    ],
+    "answer": "Added the \u201ccrash report\u201d label to redis issue #15205.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:15:52.177Z  sundb via codex  viewed  Issue duckdb-15205  Found by a query.",
+      "2026-10-15T07:15:52.177Z  sundb via codex  viewed  Issue etcd-15205  Found by a query.",
+      "2026-10-15T07:15:52.177Z  sundb via codex  viewed  Issue redis-15205  Found by a query.",
+      "2026-10-15T07:15:52.177Z  sundb via codex  viewed  Issue typescript-15205  Found by a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Label duckdb-label-reproduced  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Label etcd-label-dependencies  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Label etcd-label-go  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Label typescript-label-bug  Included in a query.",
+      "2026-10-15T07:15:52.623Z  sundb via codex  viewed  Label typescript-label-fixed  Included in a query.",
+      "2026-10-15T07:15:55.886Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:16:00.558Z  sundb via codex  changed  Issue redis-15205  labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested labeling Redis issue 15205 as a crash report."
+    ]
+  },
+  {
+    "task": "close",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 26760,
+    "seconds": 24.2,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13606
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15063",
+        200,
+        4444
+      ]
+    ],
+    "answer": "Closed redis/redis issue #15063 as not planned, recording that it concerns deployment configuration rather than a Redis problem.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:16:20.918Z  sundb via codex  viewed  Issue duckdb-15063  Found by a query.",
+      "2026-10-15T07:16:20.918Z  sundb via codex  viewed  Issue react-15063  Found by a query.",
+      "2026-10-15T07:16:20.918Z  sundb via codex  viewed  Issue redis-15063  Found by a query.",
+      "2026-10-15T07:16:20.918Z  sundb via codex  viewed  Issue typescript-15063  Found by a query.",
+      "2026-10-15T07:16:21.897Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:16:21.897Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:16:21.897Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:16:21.897Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:16:26.122Z  sundb via codex  changed  Issue redis-15063  state from \"open\" to \"closed\"; close_reason from null to \"not_planned\"; closed_on from null to \"2026-10-15\". Reason: This is a deployment question about exposing Redis Sentinel on Kubernetes to external clients, not a problem with Redis."
+    ]
+  },
+  {
+    "task": "open-issue",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 9826,
+    "seconds": 24.0,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        535
+      ],
+      [
+        "POST",
+        "/api/records/Issue",
+        201,
+        583
+      ]
+    ],
+    "answer": "Created an open issue in redis/redis as ORESoftware titled \u201cSCAN with MATCH skips keys after a resize\u201d with the exact body provided.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:16:55.293Z  oresoftware via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:17:00.174Z  oresoftware via codex  created  Issue issue-d075a6b5cbf140d8a74817942d461bc5  project \"redis\"; title \"SCAN with MATCH skips keys after a resize\"; body \"While the table grows, SCAN with a MATCH pattern returns fewer keys than KEYS does.\"; opened_on \"2026-10-15\"; kind \"issue\"; state \"open\"; author \"oresoftware\"; locked false. Reason: ORESoftware requested opening this redis issue."
+    ]
+  },
+  {
+    "task": "triage",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 21457,
+    "seconds": 29.6,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11212
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        1274
+      ]
+    ],
+    "answer": "Assigned Redis issue 15009 to sundb, added the \u201ccrash report\u201d label, and commented: \u201cI\u2019m looking into it.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:17:28.132Z  sundb via codex  viewed  Issue duckdb-15009  Found by a query.",
+      "2026-10-15T07:17:28.132Z  sundb via codex  viewed  Issue etcd-15009  Found by a query.",
+      "2026-10-15T07:17:28.132Z  sundb via codex  viewed  Issue react-15009  Found by a query.",
+      "2026-10-15T07:17:28.132Z  sundb via codex  viewed  Issue redis-15009  Found by a query.",
+      "2026-10-15T07:17:28.132Z  sundb via codex  viewed  Issue typescript-15009  Found by a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label duckdb-label-ready-for-review  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label etcd-label-type-bug  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label etcd-label-area-testing  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label etcd-label-area-security  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label etcd-label-good-first-issue  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Label react-label-cla-signed  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:17:28.703Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:17:32.478Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:17:38.275Z  sundb via codex  changed  Issue redis-15009  assignees from [] to [\"sundb\"]; labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested assignment, crash report label, and an investigation comment on Redis issue 15009.",
+      "2026-10-15T07:17:38.282Z  sundb via codex  created  Comment comment-8c66c47637f84adf9ee25ab43af8f578  issue \"redis-15009\"; body \"I\u2019m looking into it.\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested assignment, crash report label, and an investigation comment on Redis issue 15009."
+    ]
+  },
+  {
+    "task": "duplicate",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 17028,
+    "seconds": 22.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        5087
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        3259
+      ]
+    ],
+    "answer": "Closed Redis issue 15211 as a duplicate and added a comment as sundb linking to issue 15208.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:17:59.590Z  sundb via codex  viewed  Issue redis-15208  Found by a query.",
+      "2026-10-15T07:17:59.590Z  sundb via codex  viewed  Issue redis-15211  Found by a query.",
+      "2026-10-15T07:17:59.637Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:18:06.268Z  sundb via codex  changed  Issue redis-15211  state from \"open\" to \"closed\"; close_reason from null to \"duplicate\"; closed_on from null to \"2026-10-15\". Reason: sundb requested closing issue 15211 as a duplicate of 15208 and leaving a comment pointing to it.",
+      "2026-10-15T07:18:06.275Z  sundb via codex  created  Comment comment-0605cd1b3b054dcca3709093f4301d4a  issue \"redis-15211\"; body \"Closing as a duplicate of #15208: https://github.com/redis/redis/issues/15208\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested closing issue 15211 as a duplicate of 15208 and leaving a comment pointing to it."
+    ]
+  },
+  {
+    "task": "milestone",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 32923,
+    "seconds": 34.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        534
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11645
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        12006
+      ]
+    ],
+    "answer": "Created the Redis 8.8 milestone in redis/redis and assigned issues #15145 and #15181 to it.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:18:37.078Z  sundb via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:18:42.212Z  sundb via codex  viewed  Issue redis-15145  Found by a query.",
+      "2026-10-15T07:18:42.212Z  sundb via codex  viewed  Issue redis-15181  Found by a query.",
+      "2026-10-15T07:18:47.895Z  sundb via codex  created  Milestone milestone-4bed71f6e3ba42b4b00441a245f8dc1b  project \"redis\"; title \"Redis 8.8\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181 to it.",
+      "2026-10-15T07:18:47.914Z  sundb via codex  changed  Issue redis-15145  milestone from null to \"milestone-4bed71f6e3ba42b4b00441a245f8dc1b\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181 to it.",
+      "2026-10-15T07:18:47.927Z  sundb via codex  changed  Issue redis-15181  milestone from null to \"milestone-4bed71f6e3ba42b4b00441a245f8dc1b\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181 to it."
+    ]
+  },
+  {
+    "task": "locked",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 16375,
+    "seconds": 16.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        7681
+      ]
+    ],
+    "answer": "Could not post the comment: TypeScript issue #22446 is locked, and ORESoftware lacks maintainer permission to comment on locked issues.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:19:06.151Z  oresoftware via codex  viewed  Issue duckdb-22446  Found by a query.",
+      "2026-10-15T07:19:06.151Z  oresoftware via codex  viewed  Issue react-22446  Found by a query.",
+      "2026-10-15T07:19:06.151Z  oresoftware via codex  viewed  Issue typescript-22446  Found by a query.",
+      "2026-10-15T07:19:07.896Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:19:07.896Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:19:07.896Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "other-project",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 31091,
+    "seconds": 25.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        19492
+      ],
+      [
+        "GET",
+        "/api/records/Issue/redis-15269",
+        200,
+        2879
+      ]
+    ],
+    "answer": "Could not label Redis issue #15269: edison1105 is not a Redis maintainer and lacks permission to change its labels. No changes made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:19:32.683Z  edison1105 via codex  viewed  Issue duckdb-15269  Found by a query.",
+      "2026-10-15T07:19:32.683Z  edison1105 via codex  viewed  Issue etcd-15269  Found by a query.",
+      "2026-10-15T07:19:32.683Z  edison1105 via codex  viewed  Issue react-15269  Found by a query.",
+      "2026-10-15T07:19:32.683Z  edison1105 via codex  viewed  Issue redis-15269  Found by a query.",
+      "2026-10-15T07:19:32.683Z  edison1105 via codex  viewed  Issue typescript-15269  Found by a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Label duckdb-label-under-review  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Label duckdb-label-stale  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Label duckdb-label-expected-behavior  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Label react-label-type-needs-investigation  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:19:33.228Z  edison1105 via codex  viewed  Label typescript-label-working-as-intended  Included in a query.",
+      "2026-10-15T07:19:36.743Z  edison1105 via codex  viewed  Issue redis-15269  Read."
+    ]
+  },
+  {
+    "task": "assign",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 1,
+    "bytes_read": 21584,
+    "seconds": 32.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        264
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12375
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/typescript-19584",
+        403,
+        223
+      ]
+    ],
+    "answer": "Found your TypeScript issue #19584, but assignment was denied. Only project maintainers or admins can change assignees; ORESoftware lacks that permission. No changes were made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:20:06.113Z  oresoftware via codex  viewed  Person ryancavanaugh  Found by a query.",
+      "2026-10-15T07:20:10.836Z  oresoftware via codex  viewed  Issue duckdb-19584  Found by a query.",
+      "2026-10-15T07:20:10.836Z  oresoftware via codex  viewed  Issue etcd-19584  Found by a query.",
+      "2026-10-15T07:20:10.836Z  oresoftware via codex  viewed  Issue react-19584  Found by a query.",
+      "2026-10-15T07:20:10.836Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:20:12.162Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:20:12.162Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:20:12.162Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:20:12.162Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "read-issue",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 22824,
+    "seconds": 20.3,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14102
+      ]
+    ],
+    "answer": "You reported that GET * returned nil for a key named \u201c::1\u201d, while GET \"::1\" returned its value.\n\nRedis issue #3067 is closed. It was closed on February 5, 2016, and labeled \u201cexpected behavior.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue duckdb-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue etcd-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue react-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue redis-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue typescript-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue vue-core-3067  Found by a query.",
+      "2026-10-15T07:20:41.768Z  oresoftware via codex  viewed  Issue vue-docs-3067  Found by a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person tiagokepe  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person xiang90  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person jimfb  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person oresoftware  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person zpddg4gta8xkpmcd  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project vue-core  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person ladyyang  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Project vue-docs  Included in a query.",
+      "2026-10-15T07:20:42.986Z  oresoftware via codex  viewed  Person bryceandy  Included in a query."
+    ]
+  },
+  {
+    "task": "read-pr",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 20794,
+    "seconds": 18.0,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12084
+      ]
+    ],
+    "answer": "Redis pull request #13512 was opened by oranagra and merged on September 12, 2024.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:21:05.047Z  sundb via codex  viewed  Issue duckdb-13512  Found by a query.",
+      "2026-10-15T07:21:05.047Z  sundb via codex  viewed  Issue etcd-13512  Found by a query.",
+      "2026-10-15T07:21:05.047Z  sundb via codex  viewed  Issue react-13512  Found by a query.",
+      "2026-10-15T07:21:05.047Z  sundb via codex  viewed  Issue redis-13512  Found by a query.",
+      "2026-10-15T07:21:05.047Z  sundb via codex  viewed  Issue typescript-13512  Found by a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Person vyadav12  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Person zjmainstay  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Person gaearon  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Person oranagra  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:21:05.742Z  sundb via codex  viewed  Person durza007  Included in a query."
+    ]
+  },
+  {
+    "task": "read-labels",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 13273,
+    "seconds": 13.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        4581
+      ]
+    ],
+    "answer": "vuejs/core issue 14761 has three labels: scope: suspense, has workaround, and :hammer: p3-minor-bug.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:21:23.131Z  edison1105 via codex  viewed  Issue vue-core-14761  Found by a query.",
+      "2026-10-15T07:21:23.141Z  edison1105 via codex  viewed  Label vue-core-label-scope-suspense  Included in a query.",
+      "2026-10-15T07:21:23.141Z  edison1105 via codex  viewed  Label vue-core-label-has-workaround  Included in a query.",
+      "2026-10-15T07:21:23.141Z  edison1105 via codex  viewed  Label vue-core-label-hammer-p3-minor-bug  Included in a query."
+    ]
+  },
+  {
+    "task": "count-label",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 12160,
+    "seconds": 25.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        3452
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ]
+    ],
+    "answer": "There are 35 open Redis issues labelled \u201ccrash report,\u201d excluding pull requests.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:21:50.267Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:21:50.267Z  sundb via codex  viewed  Label typescript-label-crash  Found by a query.",
+      "2026-10-15T07:21:50.267Z  sundb via codex  viewed  Label typescript-label-domain-crashes  Found by a query.",
+      "2026-10-15T07:21:51.499Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:21:51.499Z  sundb via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "count-mine",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 8718,
+    "seconds": 15.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ]
+    ],
+    "answer": "You\u2019ve opened 108 issues across all projects; 6 are still open.",
+    "own_reasons": true,
+    "audit": []
+  },
+  {
+    "task": "assigned",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 20025,
+    "seconds": 24.1,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11329
+      ]
+    ],
+    "answer": "You have 2 open issues assigned to you in redis/redis:\n\n#14266 \u2014 [CRASH] RedisModule_Yield crash at whileBlockedCron\n#14382 \u2014 [CRASH] Redis 8.2.1 crashed by signal: 11, si_code: 128",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:22:45.088Z  sundb via codex  viewed  Issue redis-14266  Found by a query.",
+      "2026-10-15T07:22:45.088Z  sundb via codex  viewed  Issue redis-14382  Found by a query.",
+      "2026-10-15T07:22:45.137Z  sundb via codex  viewed  Project redis  Included in a query."
+    ]
+  },
+  {
+    "task": "count-milestone",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 7,
+    "rejected": 0,
+    "bytes_read": 9559,
+    "seconds": 24.1,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        803
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ]
+    ],
+    "answer": "Redis 6.0.x has 32 items total: 14 issues and 18 pull requests. Still open: 3 items\u20142 issues and 1 pull request.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:23:09.850Z  sundb via codex  viewed  Milestone redis-milestone-9  Found by a query.",
+      "2026-10-15T07:23:09.919Z  sundb via codex  viewed  Project redis  Included in a query."
+    ]
+  },
+  {
+    "task": "search-mine",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 17456,
+    "seconds": 14.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        8762
+      ]
+    ],
+    "answer": "Your issue is TypeScript #19584, \u201chook into `tsc --watch` using stdout -- the unix way.\u201d It is still open.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:23:32.032Z  oresoftware via codex  viewed  Issue typescript-19558  Found by a query.",
+      "2026-10-15T07:23:32.032Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:23:32.032Z  oresoftware via codex  viewed  Issue typescript-19757  Found by a query.",
+      "2026-10-15T07:23:32.032Z  oresoftware via codex  viewed  Issue typescript-33151  Found by a query.",
+      "2026-10-15T07:23:32.484Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "search-open",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 42461,
+    "seconds": 16.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        33769
+      ]
+    ],
+    "answer": "Yes. Open vuejs/core issue #9782: \u201cTeleport has encountered an error when its target is empty.\u201d It is an issue, not a pull request.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-11022  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-11410  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-11910  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-12287  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-12702  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-2047  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-2669  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-4737  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-5577  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-5603  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-5833  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-5864  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-5966  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-6207  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-7312  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-7528  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-7595  Found by a query.",
+      "2026-10-15T07:23:50.792Z  edison1105 via codex  viewed  Issue vue-core-9782  Found by a query."
+    ]
+  },
+  {
+    "task": "search-comments",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 10445,
+    "seconds": 19.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        1735
+      ]
+    ],
+    "answer": "oranagra mentioned valgrind in a comment on redis #9767 on November 10, 2021, discussing sporadic test timeouts during valgrind runs.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:24:13.010Z  sundb via codex  viewed  Comment comment-965511125  Found by a query.",
+      "2026-10-15T07:24:13.073Z  sundb via codex  viewed  Issue redis-9767  Included in a query.",
+      "2026-10-15T07:24:13.073Z  sundb via codex  viewed  Person oranagra  Included in a query."
+    ]
+  },
+  {
+    "task": "comment",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 21057,
+    "seconds": 24.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11980
+      ],
+      [
+        "POST",
+        "/api/records/Comment",
+        201,
+        355
+      ]
+    ],
+    "answer": "Added your comment to redis/redis issue #15058 as ORESoftware: \u201cI see the same with 8.6.2 on Debian 12.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:24:37.282Z  oresoftware via codex  viewed  Issue duckdb-15058  Found by a query.",
+      "2026-10-15T07:24:37.282Z  oresoftware via codex  viewed  Issue etcd-15058  Found by a query.",
+      "2026-10-15T07:24:37.282Z  oresoftware via codex  viewed  Issue react-15058  Found by a query.",
+      "2026-10-15T07:24:37.282Z  oresoftware via codex  viewed  Issue redis-15058  Found by a query.",
+      "2026-10-15T07:24:37.282Z  oresoftware via codex  viewed  Issue typescript-15058  Found by a query.",
+      "2026-10-15T07:24:39.051Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:24:39.051Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:24:39.051Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:24:39.051Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:24:39.051Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:24:43.805Z  oresoftware via codex  created  Comment comment-41562adc09e946ed8d92ee773d24ed81  issue \"redis-15058\"; body \"I see the same with 8.6.2 on Debian 12.\"; posted_on \"2026-10-15\"; author \"oresoftware\". Reason: ORESoftware requested adding this comment to redis issue 15058."
+    ]
+  },
+  {
+    "task": "label",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 38902,
+    "seconds": 29.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28182
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15205",
+        200,
+        1749
+      ]
+    ],
+    "answer": "Added the \u201ccrash report\u201d label to redis issue #15205.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:25:12.397Z  sundb via codex  viewed  Issue duckdb-15205  Found by a query.",
+      "2026-10-15T07:25:12.397Z  sundb via codex  viewed  Issue etcd-15205  Found by a query.",
+      "2026-10-15T07:25:12.397Z  sundb via codex  viewed  Issue redis-15205  Found by a query.",
+      "2026-10-15T07:25:12.397Z  sundb via codex  viewed  Issue typescript-15205  Found by a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Label duckdb-label-reproduced  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Label etcd-label-dependencies  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Label etcd-label-go  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Label typescript-label-bug  Included in a query.",
+      "2026-10-15T07:25:12.873Z  sundb via codex  viewed  Label typescript-label-fixed  Included in a query.",
+      "2026-10-15T07:25:17.663Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:25:22.277Z  sundb via codex  changed  Issue redis-15205  labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested labeling redis issue 15205 as a crash report."
+    ]
+  },
+  {
+    "task": "close",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 26760,
+    "seconds": 25.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13606
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15063",
+        200,
+        4444
+      ]
+    ],
+    "answer": "Closed redis/redis issue #15063 as not planned, with the reason that it is a deployment question, not a problem with Redis.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:25:42.863Z  sundb via codex  viewed  Issue duckdb-15063  Found by a query.",
+      "2026-10-15T07:25:42.863Z  sundb via codex  viewed  Issue react-15063  Found by a query.",
+      "2026-10-15T07:25:42.863Z  sundb via codex  viewed  Issue redis-15063  Found by a query.",
+      "2026-10-15T07:25:42.863Z  sundb via codex  viewed  Issue typescript-15063  Found by a query.",
+      "2026-10-15T07:25:43.299Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:25:43.299Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:25:43.299Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:25:43.299Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:25:49.757Z  sundb via codex  changed  Issue redis-15063  state from \"open\" to \"closed\"; close_reason from null to \"not_planned\"; closed_on from null to \"2026-10-15\". Reason: Closing as not planned: this is a deployment question, not a problem with Redis."
+    ]
+  },
+  {
+    "task": "open-issue",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 9826,
+    "seconds": 24.2,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        535
+      ],
+      [
+        "POST",
+        "/api/records/Issue",
+        201,
+        583
+      ]
+    ],
+    "answer": "Created the redis/redis issue \u201cSCAN with MATCH skips keys after a resize\u201d as ORESoftware, with the exact body you provided.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:26:12.720Z  oresoftware via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:26:17.480Z  oresoftware via codex  created  Issue issue-106001ea71be404bb86b3ec88262c63f  project \"redis\"; title \"SCAN with MATCH skips keys after a resize\"; body \"While the table grows, SCAN with a MATCH pattern returns fewer keys than KEYS does.\"; opened_on \"2026-10-15\"; kind \"issue\"; state \"open\"; author \"oresoftware\"; locked false. Reason: ORESoftware requested opening this redis issue."
+    ]
+  },
+  {
+    "task": "triage",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 21457,
+    "seconds": 31.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11212
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        1274
+      ]
+    ],
+    "answer": "Assigned Redis issue #15009 to sundb, added the \u201ccrash report\u201d label, and commented: \u201cI\u2019m looking into it.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:26:42.532Z  sundb via codex  viewed  Issue duckdb-15009  Found by a query.",
+      "2026-10-15T07:26:42.532Z  sundb via codex  viewed  Issue etcd-15009  Found by a query.",
+      "2026-10-15T07:26:42.532Z  sundb via codex  viewed  Issue react-15009  Found by a query.",
+      "2026-10-15T07:26:42.532Z  sundb via codex  viewed  Issue redis-15009  Found by a query.",
+      "2026-10-15T07:26:42.532Z  sundb via codex  viewed  Issue typescript-15009  Found by a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label duckdb-label-ready-for-review  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label etcd-label-type-bug  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label etcd-label-area-testing  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label etcd-label-area-security  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label etcd-label-good-first-issue  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Label react-label-cla-signed  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:26:43.104Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:26:48.074Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:26:53.692Z  sundb via codex  changed  Issue redis-15009  assignees from [] to [\"sundb\"]; labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested assignment, crash report labeling, and an investigation comment on Redis issue 15009.",
+      "2026-10-15T07:26:53.801Z  sundb via codex  created  Comment comment-a53ccc2e5fa54fb4bcfe3d5c6067f0f7  issue \"redis-15009\"; body \"I\u2019m looking into it.\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested assignment, crash report labeling, and an investigation comment on Redis issue 15009."
+    ]
+  },
+  {
+    "task": "duplicate",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 17028,
+    "seconds": 23.6,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        5087
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        3259
+      ]
+    ],
+    "answer": "Closed Redis issue 15211 as a duplicate and added a comment as sundb linking to issue 15208.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:27:15.847Z  sundb via codex  viewed  Issue redis-15208  Found by a query.",
+      "2026-10-15T07:27:15.847Z  sundb via codex  viewed  Issue redis-15211  Found by a query.",
+      "2026-10-15T07:27:15.896Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:27:21.365Z  sundb via codex  changed  Issue redis-15211  state from \"open\" to \"closed\"; close_reason from null to \"duplicate\"; closed_on from null to \"2026-10-15\". Reason: sundb requested closing issue 15211 as a duplicate of 15208 and adding a comment linking to it.",
+      "2026-10-15T07:27:21.518Z  sundb via codex  created  Comment comment-cb0540d5d0b04b5ab19a0eade3b8ecc2  issue \"redis-15211\"; body \"Closing as a duplicate of #15208: https://github.com/redis/redis/issues/15208\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested closing issue 15211 as a duplicate of 15208 and adding a comment linking to it."
+    ]
+  },
+  {
+    "task": "milestone",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 32923,
+    "seconds": 34.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        534
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11645
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        12006
+      ]
+    ],
+    "answer": "Created the Redis 8.8 milestone in redis/redis and assigned issues 15145 and 15181 to it.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:27:46.601Z  sundb via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:27:51.956Z  sundb via codex  viewed  Issue redis-15145  Found by a query.",
+      "2026-10-15T07:27:51.956Z  sundb via codex  viewed  Issue redis-15181  Found by a query.",
+      "2026-10-15T07:27:57.311Z  sundb via codex  created  Milestone milestone-dd1d6f8fb9de41ec9e0d0500847a52e8  project \"redis\"; title \"Redis 8.8\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181",
+      "2026-10-15T07:27:57.325Z  sundb via codex  changed  Issue redis-15145  milestone from null to \"milestone-dd1d6f8fb9de41ec9e0d0500847a52e8\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181",
+      "2026-10-15T07:27:57.336Z  sundb via codex  changed  Issue redis-15181  milestone from null to \"milestone-dd1d6f8fb9de41ec9e0d0500847a52e8\". Reason: sundb requested creating Redis 8.8 and assigning issues 15145 and 15181"
+    ]
+  },
+  {
+    "task": "locked",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 16375,
+    "seconds": 15.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        7681
+      ]
+    ],
+    "answer": "Could not post the comment: TypeScript issue #22446 is locked, and ORESoftware is not a project maintainer. No changes were made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:28:16.760Z  oresoftware via codex  viewed  Issue duckdb-22446  Found by a query.",
+      "2026-10-15T07:28:16.760Z  oresoftware via codex  viewed  Issue react-22446  Found by a query.",
+      "2026-10-15T07:28:16.760Z  oresoftware via codex  viewed  Issue typescript-22446  Found by a query.",
+      "2026-10-15T07:28:17.132Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:28:17.132Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:28:17.132Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "other-project",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 28212,
+    "seconds": 19.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        19492
+      ]
+    ],
+    "answer": "I found redis issue #15269, but could not label it: edison1105 is not a Redis maintainer and lacks permission to change issue labels. No changes were made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:28:38.340Z  edison1105 via codex  viewed  Issue duckdb-15269  Found by a query.",
+      "2026-10-15T07:28:38.340Z  edison1105 via codex  viewed  Issue etcd-15269  Found by a query.",
+      "2026-10-15T07:28:38.340Z  edison1105 via codex  viewed  Issue react-15269  Found by a query.",
+      "2026-10-15T07:28:38.340Z  edison1105 via codex  viewed  Issue redis-15269  Found by a query.",
+      "2026-10-15T07:28:38.340Z  edison1105 via codex  viewed  Issue typescript-15269  Found by a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Label duckdb-label-under-review  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Label duckdb-label-stale  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Label duckdb-label-expected-behavior  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Label react-label-type-needs-investigation  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:28:38.895Z  edison1105 via codex  viewed  Label typescript-label-working-as-intended  Included in a query."
+    ]
+  },
+  {
+    "task": "assign",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 1,
+    "bytes_read": 22498,
+    "seconds": 18.3,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13581
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/typescript-19584",
+        403,
+        223
+      ]
+    ],
+    "answer": "Found your TypeScript issue #19584, but assignment was denied. Only project maintainers or admins can change assignees. The issue remains unassigned.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:28:54.958Z  oresoftware via codex  viewed  Issue duckdb-19584  Found by a query.",
+      "2026-10-15T07:28:54.958Z  oresoftware via codex  viewed  Issue etcd-19584  Found by a query.",
+      "2026-10-15T07:28:54.958Z  oresoftware via codex  viewed  Issue react-19584  Found by a query.",
+      "2026-10-15T07:28:54.958Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Person mytherin  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Person niceies  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Person pfongkye  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Person bvaughn  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:28:55.505Z  oresoftware via codex  viewed  Person oresoftware  Included in a query."
+    ]
+  },
+  {
+    "task": "read-issue",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 22824,
+    "seconds": 98.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14102
+      ]
+    ],
+    "answer": "You reported that GET * returned nil for a key named \u201c::1\u201d, while GET \"::1\" returned its value.\n\nRedis issue #3067 is closed, marked completed on February 5, 2016, and labeled \u201cexpected-behavior.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue duckdb-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue etcd-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue react-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue redis-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue typescript-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue vue-core-3067  Found by a query.",
+      "2026-10-15T07:29:40.769Z  oresoftware via codex  viewed  Issue vue-docs-3067  Found by a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person tiagokepe  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person xiang90  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person jimfb  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person oresoftware  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person zpddg4gta8xkpmcd  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project vue-core  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person ladyyang  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Project vue-docs  Included in a query.",
+      "2026-10-15T07:29:41.470Z  oresoftware via codex  viewed  Person bryceandy  Included in a query."
+    ]
+  },
+  {
+    "task": "read-pr",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 20794,
+    "seconds": 18.4,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12084
+      ]
+    ],
+    "answer": "Redis pull request #13512 was opened by oranagra and merged on September 12, 2024.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:31:00.370Z  sundb via codex  viewed  Issue duckdb-13512  Found by a query.",
+      "2026-10-15T07:31:00.370Z  sundb via codex  viewed  Issue etcd-13512  Found by a query.",
+      "2026-10-15T07:31:00.370Z  sundb via codex  viewed  Issue react-13512  Found by a query.",
+      "2026-10-15T07:31:00.370Z  sundb via codex  viewed  Issue redis-13512  Found by a query.",
+      "2026-10-15T07:31:00.370Z  sundb via codex  viewed  Issue typescript-13512  Found by a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Person vyadav12  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Person zjmainstay  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Person gaearon  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Person oranagra  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:31:00.985Z  sundb via codex  viewed  Person durza007  Included in a query."
+    ]
+  },
+  {
+    "task": "read-labels",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 13273,
+    "seconds": 13.7,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        4581
+      ]
+    ],
+    "answer": "vuejs/core issue #14761 has these labels: scope: suspense, has workaround, and :hammer: p3-minor-bug.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:31:16.806Z  edison1105 via codex  viewed  Issue vue-core-14761  Found by a query.",
+      "2026-10-15T07:31:16.810Z  edison1105 via codex  viewed  Label vue-core-label-scope-suspense  Included in a query.",
+      "2026-10-15T07:31:16.810Z  edison1105 via codex  viewed  Label vue-core-label-has-workaround  Included in a query.",
+      "2026-10-15T07:31:16.810Z  edison1105 via codex  viewed  Label vue-core-label-hammer-p3-minor-bug  Included in a query."
+    ]
+  },
+  {
+    "task": "count-label",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 12174,
+    "seconds": 26.2,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        3452
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ]
+    ],
+    "answer": "There are 35 open Redis issues labelled \u201ccrash report\u201d, excluding pull requests.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:31:38.247Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:31:38.247Z  sundb via codex  viewed  Label typescript-label-crash  Found by a query.",
+      "2026-10-15T07:31:38.247Z  sundb via codex  viewed  Label typescript-label-domain-crashes  Found by a query.",
+      "2026-10-15T07:31:38.579Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:31:38.579Z  sundb via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "count-mine",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 8718,
+    "seconds": 18.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13
+      ]
+    ],
+    "answer": "You\u2019ve opened 108 issues across all projects; 6 are still open.",
+    "own_reasons": true,
+    "audit": []
+  },
+  {
+    "task": "assigned",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 20039,
+    "seconds": 25.3,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        534
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        10795
+      ]
+    ],
+    "answer": "You have 2 open issues assigned to you in redis/redis:\n\n#14266 \u2014 [CRASH] RedisModule_Yield crash at whileBlockedCron\n#14382 \u2014 [CRASH] Redis 8.2.1 crashed by signal: 11, si_code: 128",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:32:26.723Z  sundb via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:32:32.397Z  sundb via codex  viewed  Issue redis-14266  Found by a query.",
+      "2026-10-15T07:32:32.397Z  sundb via codex  viewed  Issue redis-14382  Found by a query."
+    ]
+  },
+  {
+    "task": "count-milestone",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 63102,
+    "seconds": 29.4,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        803
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        53557
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        12
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11
+      ]
+    ],
+    "answer": "Redis 6.0.x has 32 items: 14 issues and 18 pull requests. Of these, 3 are still open: 2 issues and 1 pull request.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:32:53.571Z  sundb via codex  viewed  Milestone redis-milestone-9  Found by a query.",
+      "2026-10-15T07:32:53.611Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-3243  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-4838  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-5789  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-5817  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6052  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6114  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6152  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6160  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6275  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6418  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6565  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6569  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6615  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6623  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6644  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6715  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6723  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6798  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-6947  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7002  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7031  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7034  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7037  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7122  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7125  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7134  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7136  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7163  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7173  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7308  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7330  Found by a query.",
+      "2026-10-15T07:32:58.479Z  sundb via codex  viewed  Issue redis-7338  Found by a query."
+    ]
+  },
+  {
+    "task": "search-mine",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 29281,
+    "seconds": 17.1,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        20587
+      ]
+    ],
+    "answer": "Your issue is #19584, \u201chook into `tsc --watch` using stdout -- the unix way.\u201d It is still open.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-13428  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-13608  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-16602  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-16604  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-16779  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-18873  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-19558  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-19757  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-20258  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-23682  Found by a query.",
+      "2026-10-15T07:33:22.684Z  oresoftware via codex  viewed  Issue typescript-33151  Found by a query.",
+      "2026-10-15T07:33:22.917Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "search-open",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 43419,
+    "seconds": 15.2,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        34727
+      ]
+    ],
+    "answer": "Yes. Open vuejs/core issue #9782: \u201cTeleport has encountered an error when its target is empty.\u201d It is an issue, not a pull request.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-11022  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-11410  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-11910  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-12287  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-12702  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-2047  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-2669  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-4737  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-5577  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-5603  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-5833  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-5864  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-5966  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-6207  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-7312  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-7528  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-7595  Found by a query.",
+      "2026-10-15T07:33:41.296Z  edison1105 via codex  viewed  Issue vue-core-9782  Found by a query.",
+      "2026-10-15T07:33:41.335Z  edison1105 via codex  viewed  Project vue-core  Included in a query."
+    ]
+  },
+  {
+    "task": "search-comments",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 10445,
+    "seconds": 32.3,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        1735
+      ]
+    ],
+    "answer": "oranagra mentioned valgrind in a comment on Redis #9767 on November 10, 2021, discussing test timeouts during valgrind runs.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:34:07.750Z  sundb via codex  viewed  Comment comment-965511125  Found by a query.",
+      "2026-10-15T07:34:07.776Z  sundb via codex  viewed  Issue redis-9767  Included in a query.",
+      "2026-10-15T07:34:07.776Z  sundb via codex  viewed  Person oranagra  Included in a query."
+    ]
+  },
+  {
+    "task": "comment",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 21057,
+    "seconds": 22.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11980
+      ],
+      [
+        "POST",
+        "/api/records/Comment",
+        201,
+        355
+      ]
+    ],
+    "answer": "Added your comment to redis/redis issue #15058 as ORESoftware: \u201cI see the same with 8.6.2 on Debian 12.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:34:36.252Z  oresoftware via codex  viewed  Issue duckdb-15058  Found by a query.",
+      "2026-10-15T07:34:36.252Z  oresoftware via codex  viewed  Issue etcd-15058  Found by a query.",
+      "2026-10-15T07:34:36.252Z  oresoftware via codex  viewed  Issue react-15058  Found by a query.",
+      "2026-10-15T07:34:36.252Z  oresoftware via codex  viewed  Issue redis-15058  Found by a query.",
+      "2026-10-15T07:34:36.252Z  oresoftware via codex  viewed  Issue typescript-15058  Found by a query.",
+      "2026-10-15T07:34:36.791Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:34:36.791Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:34:36.791Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:34:36.791Z  oresoftware via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:34:36.791Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:34:41.337Z  oresoftware via codex  created  Comment comment-b2225227268540a78bd4ec1b24d1a50d  issue \"redis-15058\"; body \"I see the same with 8.6.2 on Debian 12.\"; posted_on \"2026-10-15\"; author \"oresoftware\". Reason: ORESoftware requested this comment on redis issue 15058."
+    ]
+  },
+  {
+    "task": "label",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 38902,
+    "seconds": 30.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28182
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15205",
+        200,
+        1749
+      ]
+    ],
+    "answer": "Added the \u201ccrash report\u201d label to redis issue #15205.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:35:03.223Z  sundb via codex  viewed  Issue duckdb-15205  Found by a query.",
+      "2026-10-15T07:35:03.223Z  sundb via codex  viewed  Issue etcd-15205  Found by a query.",
+      "2026-10-15T07:35:03.223Z  sundb via codex  viewed  Issue redis-15205  Found by a query.",
+      "2026-10-15T07:35:03.223Z  sundb via codex  viewed  Issue typescript-15205  Found by a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Label duckdb-label-reproduced  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Label etcd-label-dependencies  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Label etcd-label-go  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Label typescript-label-bug  Included in a query.",
+      "2026-10-15T07:35:03.687Z  sundb via codex  viewed  Label typescript-label-fixed  Included in a query.",
+      "2026-10-15T07:35:09.353Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:35:14.520Z  sundb via codex  changed  Issue redis-15205  labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested labeling Redis issue 15205 as a crash report."
+    ]
+  },
+  {
+    "task": "close",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 26760,
+    "seconds": 23.8,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13606
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/redis-15063",
+        200,
+        4444
+      ]
+    ],
+    "answer": "Closed redis/redis issue #15063 as not planned, recording that it is a deployment question, not a problem with Redis.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:35:35.920Z  sundb via codex  viewed  Issue duckdb-15063  Found by a query.",
+      "2026-10-15T07:35:35.920Z  sundb via codex  viewed  Issue react-15063  Found by a query.",
+      "2026-10-15T07:35:35.920Z  sundb via codex  viewed  Issue redis-15063  Found by a query.",
+      "2026-10-15T07:35:35.920Z  sundb via codex  viewed  Issue typescript-15063  Found by a query.",
+      "2026-10-15T07:35:36.354Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:35:36.354Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:35:36.354Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:35:36.354Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:35:40.621Z  sundb via codex  changed  Issue redis-15063  state from \"open\" to \"closed\"; close_reason from null to \"not_planned\"; closed_on from null to \"2026-10-15\". Reason: This is a deployment question, not a problem with Redis."
+    ]
+  },
+  {
+    "task": "open-issue",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 9826,
+    "seconds": 22.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        535
+      ],
+      [
+        "POST",
+        "/api/records/Issue",
+        201,
+        583
+      ]
+    ],
+    "answer": "Opened a new issue in redis/redis as ORESoftware titled \u201cSCAN with MATCH skips keys after a resize\u201d with the exact body you provided.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:36:00.135Z  oresoftware via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:36:05.208Z  oresoftware via codex  created  Issue issue-a27c45e2dfa641398d40bc829b66f071  project \"redis\"; title \"SCAN with MATCH skips keys after a resize\"; body \"While the table grows, SCAN with a MATCH pattern returns fewer keys than KEYS does.\"; opened_on \"2026-10-15\"; kind \"issue\"; state \"open\"; author \"oresoftware\"; locked false. Reason: ORESoftware requested opening this Redis issue."
+    ]
+  },
+  {
+    "task": "triage",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 21457,
+    "seconds": 30.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11212
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        261
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        1274
+      ]
+    ],
+    "answer": "Assigned Redis issue 15009 to sundb, added the \u201ccrash report\u201d label, and commented: \u201cI\u2019m looking into it.\u201d",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:36:26.949Z  sundb via codex  viewed  Issue duckdb-15009  Found by a query.",
+      "2026-10-15T07:36:26.949Z  sundb via codex  viewed  Issue etcd-15009  Found by a query.",
+      "2026-10-15T07:36:26.949Z  sundb via codex  viewed  Issue react-15009  Found by a query.",
+      "2026-10-15T07:36:26.949Z  sundb via codex  viewed  Issue redis-15009  Found by a query.",
+      "2026-10-15T07:36:26.949Z  sundb via codex  viewed  Issue typescript-15009  Found by a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label duckdb-label-ready-for-review  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label etcd-label-type-bug  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label etcd-label-area-testing  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label etcd-label-area-security  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label etcd-label-good-first-issue  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Label react-label-cla-signed  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:36:27.517Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:36:31.770Z  sundb via codex  viewed  Label redis-label-crash-report  Found by a query.",
+      "2026-10-15T07:36:38.328Z  sundb via codex  changed  Issue redis-15009  assignees from [] to [\"sundb\"]; labels from [] to [\"redis-label-crash-report\"]. Reason: sundb requested assignment, crash report label, and investigation comment on Redis issue 15009",
+      "2026-10-15T07:36:38.352Z  sundb via codex  created  Comment comment-aa81d34034214f84849d4d49da6bd6de  issue \"redis-15009\"; body \"I\u2019m looking into it.\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested assignment, crash report label, and investigation comment on Redis issue 15009"
+    ]
+  },
+  {
+    "task": "duplicate",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 57772,
+    "seconds": 22.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        41278
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        4553
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        3259
+      ]
+    ],
+    "answer": "Closed Redis issue 15211 as a duplicate and added a comment as sundb linking to issue 15208.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue duckdb-15211  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue etcd-15208  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue etcd-15211  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue react-15208  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue react-15211  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue redis-15208  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue redis-15211  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue typescript-15208  Found by a query.",
+      "2026-10-15T07:36:54.889Z  sundb via codex  viewed  Issue typescript-15211  Found by a query.",
+      "2026-10-15T07:36:55.374Z  sundb via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:36:55.374Z  sundb via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:36:55.374Z  sundb via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:36:55.374Z  sundb via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:36:55.374Z  sundb via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:36:58.898Z  sundb via codex  viewed  Issue redis-15208  Found by a query.",
+      "2026-10-15T07:36:58.898Z  sundb via codex  viewed  Issue redis-15211  Found by a query.",
+      "2026-10-15T07:37:03.952Z  sundb via codex  changed  Issue redis-15211  state from \"open\" to \"closed\"; close_reason from null to \"duplicate\"; closed_on from null to \"2026-10-15\". Reason: sundb requested closing Redis issue 15211 as a duplicate of 15208 and leaving a comment pointing to it.",
+      "2026-10-15T07:37:03.956Z  sundb via codex  created  Comment comment-c41fbb91dcfb45b9b7014cf831b5ad44  issue \"redis-15211\"; body \"Closing as a duplicate of #15208: https://github.com/redis/redis/issues/15208\"; posted_on \"2026-10-15\"; author \"sundb\". Reason: sundb requested closing Redis issue 15211 as a duplicate of 15208 and leaving a comment pointing to it."
+    ]
+  },
+  {
+    "task": "milestone",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 8,
+    "rejected": 0,
+    "bytes_read": 32923,
+    "seconds": 33.4,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8682
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        534
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        11645
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/changes",
+        200,
+        12006
+      ]
+    ],
+    "answer": "Created the Redis 8.8 milestone in redis/redis and added issues #15145 and #15181 to it.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:37:27.288Z  sundb via codex  viewed  Project redis  Found by a query.",
+      "2026-10-15T07:37:32.620Z  sundb via codex  viewed  Issue redis-15145  Found by a query.",
+      "2026-10-15T07:37:32.620Z  sundb via codex  viewed  Issue redis-15181  Found by a query.",
+      "2026-10-15T07:37:38.016Z  sundb via codex  created  Milestone milestone-56961c95c1d64c6cadf71a871657f2f9  project \"redis\"; title \"Redis 8.8\". Reason: sundb requested Redis 8.8 milestone with issues 15145 and 15181",
+      "2026-10-15T07:37:38.061Z  sundb via codex  changed  Issue redis-15145  milestone from null to \"milestone-56961c95c1d64c6cadf71a871657f2f9\". Reason: sundb requested Redis 8.8 milestone with issues 15145 and 15181",
+      "2026-10-15T07:37:38.071Z  sundb via codex  changed  Issue redis-15181  milestone from null to \"milestone-56961c95c1d64c6cadf71a871657f2f9\". Reason: sundb requested Redis 8.8 milestone with issues 15145 and 15181"
+    ]
+  },
+  {
+    "task": "locked",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 16375,
+    "seconds": 14.5,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        7681
+      ]
+    ],
+    "answer": "Could not post the comment: TypeScript issue #22446 is locked, and ORESoftware is not a project maintainer. No changes were made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:37:56.388Z  oresoftware via codex  viewed  Issue duckdb-22446  Found by a query.",
+      "2026-10-15T07:37:56.388Z  oresoftware via codex  viewed  Issue react-22446  Found by a query.",
+      "2026-10-15T07:37:56.388Z  oresoftware via codex  viewed  Issue typescript-22446  Found by a query.",
+      "2026-10-15T07:37:56.789Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:37:56.789Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:37:56.789Z  oresoftware via codex  viewed  Project typescript  Included in a query."
+    ]
+  },
+  {
+    "task": "other-project",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 28212,
+    "seconds": 26.9,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8692
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        19492
+      ]
+    ],
+    "answer": "Could not label redis/redis issue #15269: edison1105 lacks permission to change its labels. Only Redis maintainers or admins can do so. No changes made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:38:23.900Z  edison1105 via codex  viewed  Issue duckdb-15269  Found by a query.",
+      "2026-10-15T07:38:23.900Z  edison1105 via codex  viewed  Issue etcd-15269  Found by a query.",
+      "2026-10-15T07:38:23.900Z  edison1105 via codex  viewed  Issue react-15269  Found by a query.",
+      "2026-10-15T07:38:23.900Z  edison1105 via codex  viewed  Issue redis-15269  Found by a query.",
+      "2026-10-15T07:38:23.900Z  edison1105 via codex  viewed  Issue typescript-15269  Found by a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Label duckdb-label-under-review  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Label duckdb-label-stale  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Label duckdb-label-expected-behavior  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Label react-label-type-needs-investigation  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Project redis  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:38:24.393Z  edison1105 via codex  viewed  Label typescript-label-working-as-intended  Included in a query."
+    ]
+  },
+  {
+    "task": "assign",
+    "run": 3,
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 1,
+    "bytes_read": 22526,
+    "seconds": 27.6,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        8694
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        28
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        13581
+      ],
+      [
+        "PATCH",
+        "/api/records/Issue/typescript-19584",
+        403,
+        223
+      ]
+    ],
+    "answer": "Found your TypeScript issue #19584, but could not assign it. The service requires a project maintainer or admin to change assignees; ORESoftware lacks that permission. No changes were made.",
+    "own_reasons": true,
+    "audit": [
+      "2026-10-15T07:38:48.465Z  oresoftware via codex  viewed  Issue duckdb-19584  Found by a query.",
+      "2026-10-15T07:38:48.465Z  oresoftware via codex  viewed  Issue etcd-19584  Found by a query.",
+      "2026-10-15T07:38:48.465Z  oresoftware via codex  viewed  Issue react-19584  Found by a query.",
+      "2026-10-15T07:38:48.465Z  oresoftware via codex  viewed  Issue typescript-19584  Found by a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Project duckdb  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Person mytherin  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Project etcd  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Person niceies  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Project react  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Person pfongkye  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Person bvaughn  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Project typescript  Included in a query.",
+      "2026-10-15T07:38:49.136Z  oresoftware via codex  viewed  Person oresoftware  Included in a query."
+    ]
+  }
+]

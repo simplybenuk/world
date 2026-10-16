@@ -1,0 +1,2 @@
+Checked 167,038 issues in 438s.
+Every issue satisfies every constraint.

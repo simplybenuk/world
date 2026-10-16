@@ -70,7 +70,8 @@ def running(world="crm", source=None):
     With `source`, the world starts as a copy of that database, for worlds too large to seed each time.
     """
     definition = worlds.load(world)
-    with TemporaryDirectory(prefix="world-bench-") as directory:
+    # A copy of a large world goes beside its source on disk; /tmp may be held in memory.
+    with TemporaryDirectory(prefix="world-bench-", dir=None if source is None else Path(source).parent.parent) as directory:
         if source is not None:
             shutil.copyfile(source, Path(directory) / "world.sqlite3")
         store = WorldStore(Path(directory) / "world.sqlite3", definition)

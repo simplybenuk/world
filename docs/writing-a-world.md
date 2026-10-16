@@ -66,6 +66,7 @@ sets `actor_type`.
 | `text` | string | `min_length`, `max_length` |
 | `enum` | one of `values` | `values` |
 | `integer` | whole number | `min`, `max` |
+| `boolean` | `true` or `false` | |
 | `date` | `YYYY-MM-DD` | |
 | `reference` | the ID of a live record of type `target` | `target` |
 | `list` | list of `items` | `items`, `unique`, `max_items` |
@@ -106,6 +107,11 @@ changes, the engine re-checks the constraints of every record that refers to
 it, directly or through other records. `worlds/crm.py` says a primary contact
 must belong to the opportunity's organization. That one line also stops the
 contact moving to another organization.
+
+The engine skips that re-check when no constraint in the world reads a field
+that changed. Adding a maintainer to a project with 15,000 issues re-checks
+none of them, because no constraint reads `maintainers`. A constraint that uses
+`can_read` may read anything, so a world with one always re-checks.
 
 The engine always rejects a reference to a missing record and the deletion of a
 record that others refer to. Do not write constraints for those.

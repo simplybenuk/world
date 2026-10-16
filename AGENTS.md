@@ -32,12 +32,31 @@ work is experiments and improvements against the two aims above. Do not start
 building or hosting a public demo before Ben says the evidence is enough. The
 demo is planned in `docs/plan.md`. Hosting it needs Ben's decision.
 
+Ben, 2026-10-16: the claim holds. The evidence is enough to build the demo.
+
 ### The plan to a public demo
 
 Ben, 2026-10-14. Follow `docs/plan.md`. In short: firm up the evidence on a
 large real dataset, then build a private demo of a team tool where people bring
-their own agents, then open it to the public. Step 1 is under way. Update the
-plan when a step finishes or a decision changes it.
+their own agents, then open it to the public. Step 1 is done (2026-10-16).
+Update the plan when a step finishes or a decision changes it.
+
+### World is a database for agents, and the demo lives in its own repository
+
+Ben, 2026-10-16. World is a database, not a language, protocol, or standard. It
+has a definition language and a protocol, as SQL databases have a dialect and a
+wire protocol. It becomes a standard only if someone builds a second engine for
+its protocol.
+
+The demo is World's first user and lives in a separate repository. Whatever
+another product built on World would also need belongs in World: the engine,
+the protocol, the MCP server, agent tokens and `person via agent`, and changing
+a world's definition while it runs. Accounts, teams, sign-up, token pages, the
+team-tool definition, the audit page people see, and hosting belong in the
+demo. When the demo has to work around World, fix World.
+
+"World" is a working name. Ben is looking for a better one. "Agentbase" is
+taken by several agent-memory projects.
 
 ### Order of improvements
 
@@ -55,6 +74,15 @@ Ben, 2026-10-13. After the third experiment, work in this order:
    (2026-10-14). At a million records and 201 types, an agent needed 61 calls on
    World and 134 on EspoCRM, in 170 s against 273 s. See
    `docs/fourth-experiment.md`.
+
+### The real dataset is GitHub issues
+
+Ben, 2026-10-14. Step 1 of the plan uses `open-index/open-github-issues` from
+Hugging Face (ODC-By 1.0, so the figures and any copy must credit it). Of the
+three candidates it was on Hugging Face, permissively licensed, real, and shaped
+like the team tool the demo will be. The Public Jira Dataset (CC BY 4.0, on
+Zenodo) and Olist (CC BY-NC-SA) were the alternatives. Seven repositories make
+about 900,000 records in the `tracker` world. See `docs/fifth-experiment.md`.
 
 ### World is the system of record, and provides no LLM
 
@@ -86,6 +114,10 @@ fits on a USB key.
   (2026-10-13). Claude Code gave the same result on the lab: half the calls, 71%
   of the time. World's advantage is in domains an agent has not seen, in size,
   and in refusing wrong requests. See `docs/third-experiment.md`.
+- On real GitHub issues, about 900,000 records, all three agents were at least
+  as correct on World (2026-10-16). Codex and Claude Code needed 52% and 33% of
+  the calls. A weaker free model, MiMo, got 60 of 60 on World and 14 of 25 on
+  EspoCRM, mostly timing out. See `docs/fifth-experiment.md`.
 - Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.
@@ -108,12 +140,20 @@ measurement shows it is the limit.
 - `world/` is the engine: storage, validation, versions, history, and the HTTP
   protocol. It must not name a type, role, or rule from any one domain.
 - `worlds/` holds one definition per domain: `team` (the default), `crm`,
-  `lab`, and `enterprise` (the lab plus 197 generated types, for scale tests). A definition is data. Rules are expressions the engine evaluates and
+  `lab`, `enterprise` (the lab plus 197 generated types, for scale tests), and
+  `tracker` (real GitHub issues, for step 1 of the plan). A definition is data. Rules are expressions the engine evaluates and
   shows to clients, so never enforce a rule in Python. Extend the language in
   `world/rules.py` if a rule cannot be written. See `docs/writing-a-world.md`. `python3 -m bench --domain lab` selects the lab's tasks.
 - `python3 -m bench.scale` builds and times the million-record world in
   `artifacts/bench/scale`. It measures on a copy. Never write to the built
   database, because the agent tasks start from it.
+- `python3 -m bench.github` downloads the GitHub data, builds the tracker world
+  in `artifacts/bench/tracker`, and checks it against the world's constraints.
+  The same rule applies: never write to the built database. `bench/parquet.py`
+  reads the Parquet files with the standard library.
+- `bench/control/tracker.py` builds the tracker's control in a second EspoCRM
+  on port 8792 (`docker compose -p world-control-tracker`). See
+  `docs/fifth-experiment.md`.
 - `docs/results/` keeps the raw output behind every figure in the experiment
   documents. `artifacts/` is scratch space and may be deleted. When a write-up
   cites a run, copy its file into `docs/results/` and list it in that README.

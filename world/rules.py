@@ -316,6 +316,46 @@ def _path(node: ast.AST, variable: str) -> tuple[str, ...] | None:
     return tuple(reversed(fields)) if fields and isinstance(node, ast.Name) and node.id == variable else None
 
 
+def reads(expression: str, types: dict[str, Any], record_type: str, actor_type: str) -> set[tuple[str, str]] | None:
+    """The (type, field) pairs an expression can read, or None when that cannot be known.
+
+    A change to fields outside this set cannot change the expression's value,
+    so the engine need not judge it again after such a change.
+    """
+    tree = parse(expression, tuple(types))
+    found: set[tuple[str, str]] = set()
+    names = {"record": record_type, "saved": record_type, "actor": actor_type}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and node.func.id == "can_read":  # type: ignore[attr-defined]
+            return None  # depends on read rules, which may read anything
+        if isinstance(node, ast.Call) and node.func.id == "changed":  # type: ignore[attr-defined]
+            found.add((record_type, node.args[0].value))  # type: ignore[attr-defined]
+        if isinstance(node, ast.GeneratorExp):
+            loop = node.generators[0]
+            names[loop.target.id] = loop.iter.id  # type: ignore[attr-defined]
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue  # inner parts of a path are visited too, and add nothing new
+        chain: list[str] = []
+        base: ast.AST = node
+        while isinstance(base, ast.Attribute):
+            chain.append(base.attr)
+            base = base.value
+        if not isinstance(base, ast.Name):
+            continue
+        current: str | None = names.get(base.id)
+        for field in reversed(chain):
+            if current is None:
+                break
+            if field in ("id", "type"):
+                current = None
+                continue
+            found.add((current, field))
+            spec = types[current]["fields"].get(field, {})
+            current = spec.get("target") or spec.get("items", {}).get("target")
+    return found
+
+
 def holds(evaluation: Evaluation, expression: str) -> bool:
     """Whether a rule is satisfied for a known actor and record."""
     value = evaluation.run(expression)
