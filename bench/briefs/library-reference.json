@@ -1,0 +1,71 @@
+{
+  "name": "library",
+  "title": "Elm Street Tool Library",
+  "version": "1",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A member or a member of staff.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 200},
+        "role": {"type": "enum", "required": true, "values": ["staff", "member"]},
+        "member_until": {"type": "date", "nullable": true, "default": null},
+        "inducted": {"type": "boolean", "default": false, "write_rule": "actor.role == 'staff'"}
+      },
+      "rules": {"read": "actor.id is not None", "create": "actor.role == 'staff'",
+                "update": "actor.role == 'staff'", "delete": "False"}
+    },
+    "Tool": {
+      "description": "A tool the library lends.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 200},
+        "power_saw": {"type": "boolean", "default": false}
+      },
+      "rules": {"read": "actor.id is not None", "create": "actor.role == 'staff'",
+                "update": "actor.role == 'staff'", "delete": "actor.role == 'staff'"}
+    },
+    "Loan": {
+      "description": "A tool lent to a member. returned is empty while the tool is out.",
+      "fields": {
+        "tool": {"type": "reference", "target": "Tool", "required": true},
+        "member": {"type": "reference", "target": "Person", "required": true},
+        "out": {"type": "date", "required": true},
+        "due": {"type": "date", "required": true},
+        "returned": {"type": "date", "nullable": true, "default": null}
+      },
+      "rules": {"read": "actor.role == 'staff' or record.member == actor.id", "create": "actor.role == 'staff'",
+                "update": "actor.role == 'staff'", "delete": "False"},
+      "constraints": [
+        {"check": "record.out <= record.due", "message": "A loan is due back after it goes out.", "fields": ["due"]},
+        {"check": "not any(l.tool == record.tool and l.returned is None and l.id != record.id for l in Loan)",
+         "message": "This tool is already out on loan.", "fields": ["tool"], "on": ["create"]},
+        {"check": "record.member.member_until is not None and record.member.member_until >= record.out",
+         "message": "Nobody may borrow once their membership has run out.", "fields": ["member"], "on": ["create"]},
+        {"check": "not record.tool.power_saw or record.member.inducted",
+         "message": "Power saws are lent only to members who have done the safety induction.", "fields": ["tool", "member"], "on": ["create"]}
+      ]
+    },
+    "Reservation": {
+      "description": "A member's wish to borrow a tool next.",
+      "fields": {
+        "tool": {"type": "reference", "target": "Tool", "required": true},
+        "member": {"type": "reference", "target": "Person", "required": true, "default": "$actor"}
+      },
+      "rules": {"read": "actor.role == 'staff' or record.member == actor.id",
+                "create": "actor.role == 'staff' or record.member == actor.id",
+                "update": "actor.role == 'staff'", "delete": "actor.role == 'staff' or record.member == actor.id"}
+    }
+  },
+  "records": [
+    {"type": "Person", "id": "grace", "data": {"name": "Grace Okoye", "role": "staff"}},
+    {"type": "Person", "id": "dev", "data": {"name": "Dev Mehta", "role": "member", "member_until": "2027-03-31", "inducted": true}},
+    {"type": "Person", "id": "hana", "data": {"name": "Hana Sato", "role": "member", "member_until": "2026-09-30"}},
+    {"type": "Person", "id": "ian", "data": {"name": "Ian Ross", "role": "member", "member_until": "2027-01-31"}},
+    {"type": "Tool", "id": "drill-01", "data": {"name": "Cordless drill"}},
+    {"type": "Tool", "id": "ladder-01", "data": {"name": "Extension ladder"}},
+    {"type": "Tool", "id": "saw-01", "data": {"name": "Circular saw", "power_saw": true}},
+    {"type": "Tool", "id": "sander-01", "data": {"name": "Orbital sander"}},
+    {"type": "Loan", "id": "loan-ian-drill", "data": {"tool": "drill-01", "member": "ian", "out": "2026-10-10", "due": "2026-10-24"}},
+    {"type": "Loan", "id": "loan-dev-sander", "data": {"tool": "sander-01", "member": "dev", "out": "2026-09-01", "due": "2026-09-14", "returned": "2026-09-12"}}
+  ]
+}

@@ -298,6 +298,32 @@ def control_target(task, users):
         meter.close()
 
 
+def invoke(command_line, prompt, timeout):
+    """Give one prompt to a fresh agent in an empty workspace: (answer, timed out, seconds, exit status).
+
+    Without command_line the agent is Codex. Its answer is WORLD_ANSWER_FILE if it wrote one, else its output.
+    """
+    with tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
+        answer_file = Path(workspace) / "answer.txt"
+        command = shlex.split(command_line) if command_line else codex_command(workspace, str(answer_file))
+        if command_line and (ROOT / command[0]).is_file():
+            command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
+        environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
+        started = time.monotonic()
+        # Its own process group, so that a timeout stops everything the agent started.
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True, cwd=workspace, env=environment, start_new_session=True)
+        try:
+            output, timed_out = process.communicate(prompt, timeout=timeout)[0], False
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            output, timed_out = "", True
+        seconds = round(time.monotonic() - started, 1)
+        answer = answer_file.read_text() if answer_file.exists() else output
+        return answer, timed_out, seconds, process.returncode
+
+
 def agent(args):
     domain.SEEDED.update(seeded_ids())
     tasks = [task for task in domain.TASKS if not args.task or task.id in args.task]
@@ -311,31 +337,15 @@ def agent(args):
             discarded = 0
             while True:
                 target = control_target(task, users) if args.control else world_target(task, args.label)
-                with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
-                    answer_file = Path(workspace) / "answer.txt"
-                    command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
-                    if args.command and (ROOT / command[0]).is_file():
-                        command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
-                    environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
-                    started = time.monotonic()
-                    # Its own process group, so that a timeout stops everything the agent started.
-                    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                               text=True, cwd=workspace, env=environment, start_new_session=True)
-                    try:
-                        output, timed_out = process.communicate(prompt, timeout=args.timeout)[0], False
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
-                        process.communicate()
-                        output, timed_out = "", True
-                    seconds = round(time.monotonic() - started, 1)
-                    if not timed_out and process.returncode == UNAVAILABLE and discarded < 6:
+                with target as (prompt, meter, finish):
+                    answer, timed_out, seconds, returncode = invoke(args.command, prompt, args.timeout)
+                    if not timed_out and returncode == UNAVAILABLE and discarded < 6:
                         # The agent's model provider failed, which says nothing about the records. Start again from the beginning.
                         discarded += 1
                         print(f"{task.id} run {run}: provider unavailable, attempt {discarded} discarded "
                               f"({len(meter.requests)} calls)", flush=True)
                         time.sleep(min(60 * 2 ** (discarded - 1), 900))
                         continue
-                    answer = answer_file.read_text() if answer_file.exists() else output
                     failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
                     if not meter.requests and not timed_out:
                         failures = ["The agent made no requests."]

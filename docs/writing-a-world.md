@@ -27,6 +27,19 @@ DEFINITION = Lab()
 Add the module's name to `AVAILABLE` in `worlds/__init__.py`, then serve it with
 `python3 -m world.server --world lab --data-dir DIRECTORY`.
 
+A world can also be one JSON file, with the same types and rules and its first
+records listed. Every record of the actor type is a person who can be given
+access, and a record comes after the records it refers to:
+
+```json
+{"name": "clinic", "title": "Harbourside Vets", "version": "1", "actor_type": "Person",
+ "types": {"Person": {...}, "Appointment": {...}},
+ "records": [{"type": "Person", "id": "okafor", "data": {"name": "Dr Amara Okafor", "role": "vet"}}]}
+```
+
+Serve it with `python3 -m world.server --world clinic.json --data-dir DIRECTORY`.
+`bench/briefs/clinic-reference.json` is a complete example.
+
 The engine parses every rule when the world loads. A rule it cannot parse stops
 the server from starting and names the type.
 
@@ -170,8 +183,11 @@ You do not write these. The engine works them out from the rules for each actor.
 
 ## Limits
 
-- A definition is a Python module, because its seed uses dates relative to
-  today. The types and rules in it are plain data and would fit in a JSON file.
+- A Python definition can seed dates relative to today. A JSON world's records
+  are fixed.
+- There is no arithmetic, so a rule cannot say "at most 14 days after it went
+  out" or add up amounts.
+- There are no decimal numbers. Store 31.5 kg as 315 tenths of a kilogram.
 - A rule that refuses a request returns the rule's text, not which part of it
   failed.
 - Type and field names use letters, digits, and underscores, and start with a
