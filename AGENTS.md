@@ -55,8 +55,10 @@ a world's definition while it runs. Accounts, teams, sign-up, token pages, the
 team-tool definition, the audit page people see, and hosting belong in the
 demo. When the demo has to work around World, fix World.
 
-"World" is a working name. Ben is looking for a better one. "Agentbase" is
-taken by several agent-memory projects.
+The name stays World (Ben, 2026-10-16). It sounds bigger than the thing is,
+which is the joke: like Phoebe's tattoo of the whole world in *Friends*, it is
+just a dot. Other names were considered and set aside: Agentbase and Ontic are
+taken, and Realm is MongoDB's mobile database.
 
 ### Order of improvements
 
