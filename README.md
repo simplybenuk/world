@@ -187,6 +187,13 @@ where to sign in. The authorization server uses its key at `/api/access`:
 `POST {"actor", "agent", "expires_in"}` issues a token, `GET ?actor=` lists who
 has given which agents access, and `DELETE {"actor", "agent"}` or
 `DELETE {"token"}` revokes. A token is valid only for the world that issued it.
+Giving and revoking access are audit lines on the record of the person the
+agent acts for. They name who did it with `"by"` (the person, unless said
+otherwise) and the software they used with `"via"`:
+
+```text
+2026-10-16T20:14:03.120Z  maya via teamworld  gave access  Person maya  claude-ai may act as maya.
+```
 
 ## Records
 
@@ -381,11 +388,15 @@ The change remains.
 
 ## What World is not
 
+World is a database for agents: a system of record whose rules and history
+travel with the records. It is not a storage engine, and it is not the
+application.
+
 World is not currently intended to be:
 
 - a frontend framework
 - a CMS
-- a database
+- a storage engine
 - a low-code platform
 - a project management application
 - an AI website builder

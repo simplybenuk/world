@@ -210,6 +210,27 @@ class WorldStore:
                 );
                 CREATE INDEX IF NOT EXISTS refs_target ON refs (target_type, target_id);
                 CREATE INDEX IF NOT EXISTS refs_source ON refs (source_type, source_id);
+                -- Who let software act for whom, and when that stopped. The record is the person acted for.
+                CREATE TABLE IF NOT EXISTS access (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    record_id TEXT NOT NULL,
+                    at TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    agent TEXT,
+                    action TEXT NOT NULL CHECK (action IN ('gave', 'revoked')),
+                    detail TEXT NOT NULL,
+                    after_event INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS access_record ON access (type, record_id, id);
+                CREATE TRIGGER IF NOT EXISTS access_no_update
+                    BEFORE UPDATE ON access BEGIN
+                        SELECT RAISE(ABORT, 'World history is append-only');
+                    END;
+                CREATE TRIGGER IF NOT EXISTS access_no_delete
+                    BEFORE DELETE ON access BEGIN
+                        SELECT RAISE(ABORT, 'World history is append-only');
+                    END;
             """)
             # One index per field name, shared by every type that has the field, so that a lookup by
             # value does not read every record. An index per type and field would mean thousands
@@ -341,6 +362,22 @@ class WorldStore:
         if limit is not None:
             sql, params = sql + " LIMIT ?", [*params, limit]
         return [self._decode(row) for row in connection.execute(sql, params)]
+
+    def record_access(self, actor_id: str, action: str, person: str, agent: str, detail: str, *, by_agent: str | None = None) -> None:
+        """Add an audit line that actor_id gave an agent access to act as person, or revoked it.
+
+        The line belongs to the person's record, so whoever may read that record sees it.
+        """
+        if action not in ("gave", "revoked"):
+            raise ValueError("action is gave or revoked")
+        with self._transaction(write=True) as connection:
+            self._actor(connection, actor_id)
+            latest = connection.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()[0]
+            connection.execute(
+                "INSERT INTO access (type, record_id, at, actor, agent, action, detail, after_event) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (self.definition.actor_type, person, _now(), actor_id, _agent(by_agent), action,
+                 f"{_agent(agent)} {'may act as' if action == 'gave' else 'may no longer act as'} {person}" + (f" {detail}" if detail else "") + ".",
+                 latest))
 
     def actor_exists(self, actor_id: Any) -> bool:
         """Whether someone in the world has this id. For issuing access, so it reads no record and leaves no audit line."""
@@ -1046,7 +1083,8 @@ class WorldStore:
     ) -> list[str]:
         """The latest audit lines for records this actor may read, oldest first.
 
-        Each line gives when, who, what they did, the record, and the detail.
+        Each line gives when, who, what they did, the record, and the detail. Giving or revoking an agent's
+        access is a line on the record of the person it acts for.
         Who is the actor, followed by "via" and the agent when software acted for them.
         Long values are shortened here; history() returns them in full.
         """
@@ -1071,6 +1109,9 @@ class WorldStore:
             ] + [
                 (row["after_event"], 1, row["id"], row["at"], who(row), "viewed", row["type"], row["record_id"], row["how"].capitalize() + ".")
                 for row in connection.execute(f"SELECT * FROM views{where} ORDER BY id DESC LIMIT ?", (*params, limit))
+            ] + [
+                (row["after_event"], 2, row["id"], row["at"], who(row), f"{row['action']} access", row["type"], row["record_id"], row["detail"])
+                for row in connection.execute(f"SELECT * FROM access{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ]
             readable: dict[tuple[str, str], bool] = {}
             lines = []
