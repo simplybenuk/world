@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import re
 import secrets
+import threading
+import time
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from client_gateway.planner import ClientError, CodexPlanner, strict_json
@@ -57,10 +59,14 @@ class AccessTokens:
         self.tokens = json.loads(self.path.read_text())
         os.chmod(self.path, 0o600)
 
-        # Tokens a person has issued to software acting for them: token -> [actor, agent].
+        # Tokens a person has issued to software acting for them: token -> [actor, agent, expires_at or None].
         self.agent_path = Path(data_dir) / "agent-access.json"
         self.agents, self._agents_read = {}, None
+        self._lock = threading.Lock()
         self._reload_agents()
+
+        # The key an authorization server presents to issue and revoke agent tokens. See issuer_key().
+        self.issuer_path = Path(data_dir) / "issuer-key"
 
     def _reload_agents(self):
         """Read the issued tokens again if the file changed, so a token issued while the world runs works at once."""
@@ -69,7 +75,18 @@ class AccessTokens:
         except FileNotFoundError:
             return
         if changed != self._agents_read:
-            self.agents, self._agents_read = json.loads(self.agent_path.read_text()), changed
+            agents = json.loads(self.agent_path.read_text())
+            self.agents = {token: [*issued, None][:3] for token, issued in agents.items()}  # older files have no expiry
+            self._agents_read = changed
+
+    def _save_agents(self):
+        now = time.time()
+        self.agents = {token: issued for token, issued in self.agents.items() if issued[2] is None or issued[2] > now}
+        descriptor = os.open(self.agent_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump(self.agents, stream)
+            stream.write("\n")
+        self._agents_read = self.agent_path.stat().st_mtime_ns
 
     def identify(self, token):
         """The actor a token signs in, and the agent it was issued to, if any."""
@@ -79,31 +96,71 @@ class AccessTokens:
             if hmac.compare_digest(token, credential):
                 return actor, None
         self._reload_agents()
-        for credential, (actor, agent) in self.agents.items():
-            if hmac.compare_digest(token, credential):
+        now = time.time()
+        for credential, (actor, agent, expires_at) in list(self.agents.items()):
+            if hmac.compare_digest(token, credential) and (expires_at is None or expires_at > now):
                 return actor, agent
         return None, None
 
     def actor_for(self, token):
         return self.identify(token)[0]
 
-    def issue(self, actor, agent):
-        """A token that acts as this actor and is recorded as this agent. Reissuing returns the same token."""
-        if actor not in self.tokens:
+    def issue(self, actor, agent, expires_in=None, *, seeded=True):
+        """A token that acts as this actor and is recorded as this agent.
+
+        Without expires_in, reissuing returns the same token. With it, every call gives a new token that
+        stops working after that many seconds, as an OAuth access token does. seeded=False skips the check
+        against the seeded actors, for a caller that has checked the world itself.
+        """
+        if seeded and actor not in self.tokens:
             raise ValueError(f"Unknown actor. Choose one of: {', '.join(self.tokens)}.")
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", agent):
+        if not isinstance(agent, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", agent):
             raise ValueError("An agent name is up to 64 letters, digits, dots, hyphens, or underscores.")
-        self._reload_agents()  # another process may have issued tokens since
-        for token, issued in self.agents.items():
-            if issued == [actor, agent]:
-                return token
-        token = secrets.token_urlsafe(32)
-        self.agents[token] = [actor, agent]
-        descriptor = os.open(self.agent_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(descriptor, "w") as stream:
-            json.dump(self.agents, stream)
-            stream.write("\n")
-        return token
+        if expires_in is not None and (type(expires_in) is not int or not 60 <= expires_in <= 366 * 86400):
+            raise ValueError("expires_in is a whole number of seconds from 60 to a year.")
+        with self._lock:
+            self._reload_agents()  # another process may have issued tokens since
+            if expires_in is None:
+                for token, issued in self.agents.items():
+                    if issued == [actor, agent, None]:
+                        return token
+            token = secrets.token_urlsafe(32)
+            self.agents[token] = [actor, agent, None if expires_in is None else round(time.time() + expires_in)]
+            self._save_agents()
+            return token
+
+    def revoke(self, token=None, actor=None, agent=None):
+        """Stop a token working, or every token issued to this actor's agent. Returns how many stopped."""
+        with self._lock:
+            self._reload_agents()
+            stopped = [credential for credential, issued in self.agents.items()
+                       if (token is not None and hmac.compare_digest(credential, token))
+                       or (token is None and issued[:2] == [actor, agent])]
+            for credential in stopped:
+                del self.agents[credential]
+            if stopped:
+                self._save_agents()
+            return len(stopped)
+
+    def grants(self, actor=None):
+        """Which agents may act for whom, and until when; never the tokens themselves."""
+        self._reload_agents()
+        now = time.time()
+        found = {}
+        for issued_actor, agent, expires_at in self.agents.values():
+            if (actor is None or issued_actor == actor) and (expires_at is None or expires_at > now):
+                key = (issued_actor, agent)
+                latest = found.get(key, 0)
+                found[key] = None if latest is None or expires_at is None else max(latest, expires_at)
+        return [{"actor": key[0], "agent": key[1], "expires_at": expires_at} for key, expires_at in sorted(found.items())]
+
+    def issuer_key(self, create=False):
+        """The authorization server's key, made on first request with create=True; None if there is none."""
+        if create and not self.issuer_path.exists():
+            descriptor = os.open(self.issuer_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, "w") as stream:
+                stream.write(secrets.token_urlsafe(32) + "\n")
+        return self.issuer_path.read_text().strip() if self.issuer_path.exists() else None
 
 
 class WorldHTTPServer(ThreadingHTTPServer):
@@ -111,8 +168,11 @@ class WorldHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     request_queue_size = 256  # the default of 5 resets connections when many clients arrive at once
 
-    def __init__(self, address, store, access, planner=None, meter=None):
+    def __init__(self, address, store, access, planner=None, meter=None, public_url=None, authorization_server=None):
         self.store = store
+        # Where this world is reached, and where an MCP client signs in for a token (OAuth). Both or neither.
+        self.public_url = public_url.rstrip("/") if public_url else None
+        self.authorization_server = authorization_server
         self.access = access
         self.planner = planner or CodexPlanner()
         self.meter = meter  # called with (method, path, status, response bytes) for measurement
@@ -153,6 +213,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/health":
                 return self._respond(200, {"status": "ok", "provider": "codex", "provider_available": self.server.planner.available,
                                            "world": self.server.store.definition.title, "protocol_version": "0.1"})
+            if method == "GET" and path in {"/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"}:
+                return self._resource_metadata()
             if path == "/mcp":
                 return mcp.handle(self, method)
             body = self._body() if method in {"POST", "PATCH", "DELETE"} else {}
@@ -167,6 +229,8 @@ class WorldHandler(BaseHTTPRequestHandler):
                 return self._respond(200, {"actor": actor}, cookie=self._cookie(token))
             if path == "/api/session" and method == "DELETE":
                 return self._respond(200, {"signed_out": True}, cookie="world_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
+            if path == "/api/access":
+                return self._access(method, split.query, body)
             actor_id = self._actor()
             store = self.server.store
             answer = self._operate(method, path, split.query, body, actor_id)
@@ -248,6 +312,51 @@ class WorldHandler(BaseHTTPRequestHandler):
                 store.delete(actor_id, type_name, record_id, body.get("expected_version"), self._provenance(actor_id, body))
                 return (200, {"deleted": True, "type": type_name, "id": record_id})
         return None
+
+    def _resource_metadata(self):
+        """OAuth protected resource metadata (RFC 9728): where an MCP client signs in for a token to this world."""
+        if not (self.server.public_url and self.server.authorization_server):
+            raise ClientError(404, "not_found", "This world names no authorization server. Ask its operator for a token.")
+        return self._respond(200, {
+            "resource": self.server.public_url + "/mcp", "authorization_servers": [self.server.authorization_server],
+            "bearer_methods_supported": ["header"], "resource_name": self.server.store.definition.title,
+        })
+
+    def challenge(self, error=None):
+        """The WWW-Authenticate value for a refused token, naming the metadata when there is an authorization server."""
+        value = 'Bearer realm="world"'
+        if self.server.public_url and self.server.authorization_server:
+            value += f', resource_metadata="{self.server.public_url}/.well-known/oauth-protected-resource/mcp"'
+        return value + (f', error="{error}"' if error else "")
+
+    def _access(self, method, query, body):
+        """For the authorization server only: issue, list, and revoke the tokens agents act with."""
+        authorization = self.headers.get("Authorization", "")
+        key = self.server.access.issuer_key()
+        if not key or not authorization.startswith("Bearer ") or not hmac.compare_digest(authorization[7:], key):
+            raise ClientError(401, "issuer_required", "Only this world's authorization server may issue access, with its issuer key.")
+        access = self.server.access
+        if method == "GET":
+            return self._respond(200, {"grants": access.grants(parse_qs(query).get("actor", [None])[0])})
+        if method == "POST":
+            actor, agent, expires_in = body.get("actor"), body.get("agent"), body.get("expires_in")
+            if not self.server.store.actor_exists(actor):
+                raise ClientError(422, "unknown_actor", "No one in this world has that id.")
+            try:
+                token = access.issue(actor, agent, expires_in, seeded=False)
+            except ValueError as error:
+                raise ClientError(422, "invalid_access", str(error)) from None
+            issued = {"access_token": token, "token_type": "Bearer", "actor": actor, "agent": agent}
+            return self._respond(201, {**issued, **({"expires_in": expires_in} if expires_in is not None else {})})
+        if method == "DELETE":
+            if isinstance(body.get("token"), str):
+                stopped = access.revoke(token=body["token"])
+            elif isinstance(body.get("actor"), str) and isinstance(body.get("agent"), str):
+                stopped = access.revoke(actor=body["actor"], agent=body["agent"])
+            else:
+                raise ClientError(422, "invalid_access", 'Name a "token", or an "actor" and an "agent".')
+            return self._respond(200, {"revoked": stopped})
+        raise ClientError(405, "method_not_allowed", "Use GET, POST, or DELETE.")
 
     def _actor(self):
         authorization = self.headers.get("Authorization", "")
@@ -394,7 +503,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run a World on this server.")
     parser.add_argument("--world", choices=worlds.AVAILABLE, default=os.environ.get("WORLD_DEFINITION", "team"),
                         help="World definition to serve; each needs its own data directory")
-    parser.add_argument("command", nargs="?", choices=["serve", "access"], default="serve")
+    parser.add_argument("command", nargs="?", choices=["serve", "access", "issuer"], default="serve",
+                        help="serve the world; access prints a token; issuer prints the key an authorization server uses "
+                        "to issue agent tokens at /api/access, making it on first use")
     parser.add_argument("--host", default=os.environ.get("WORLD_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("WORLD_PORT", "8787")))
     parser.add_argument("--data-dir", type=Path, help="Defaults to ~/.local/share/world, with a subdirectory for worlds other than team")
@@ -402,6 +513,10 @@ def main():
     parser.add_argument("--agent", help="For the access command: issue a token for software acting as the actor. "
                         "The audit records its reads and changes as ACTOR via AGENT")
     parser.add_argument("--url", default=os.environ.get("WORLD_URL"), help="Client base URL for the access command")
+    parser.add_argument("--public-url", default=os.environ.get("WORLD_PUBLIC_URL"),
+                        help="The URL this world is reached at, such as https://example.com; needed with --authorization-server")
+    parser.add_argument("--authorization-server", default=os.environ.get("WORLD_AUTHORIZATION_SERVER"),
+                        help="The OAuth authorization server where MCP clients sign in for a token to this world")
     args = parser.parse_args()
     definition = worlds.load(args.world)
     default_dir = DEFAULT_DATA_DIR if args.world == "team" else DEFAULT_DATA_DIR / args.world
@@ -409,6 +524,11 @@ def main():
     data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(data_dir, 0o700)
     access = AccessTokens(data_dir, definition.actors)
+    if args.command == "issuer":
+        print(access.issuer_key(create=True))
+        return
+    if bool(args.public_url) != bool(args.authorization_server):
+        parser.error("--public-url and --authorization-server go together.")
     if args.command == "access":
         if args.actor not in access.tokens:
             parser.error(f"Unknown actor. Choose one of: {', '.join(access.tokens)}.")
@@ -427,7 +547,8 @@ def main():
     except ValueError as error:
         parser.error(str(error))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    server = WorldHTTPServer((args.host, args.port), store, access)
+    server = WorldHTTPServer((args.host, args.port), store, access, public_url=args.public_url,
+                             authorization_server=args.authorization_server)
     logging.info("%s world listening on %s:%s; data in %s", args.world, args.host, args.port, data_dir)
     try:
         server.serve_forever()

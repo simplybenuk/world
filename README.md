@@ -173,6 +173,21 @@ session. For example, with Claude Code:
 claude mcp add --transport http world http://localhost:8787/mcp --header "Authorization: Bearer TOKEN"
 ```
 
+A chat app's connector signs in with OAuth instead of a pasted token. World
+checks tokens but has no sign-in page, so a separate authorization server, such
+as the demo's, signs people in and asks World for each agent's token:
+
+```sh
+python3 -m world.server issuer   # prints the authorization server's key, made on first use
+python3 -m world.server --public-url https://world.example --authorization-server https://sign-in.example
+```
+
+With both set, `/.well-known/oauth-protected-resource/mcp` tells a connector
+where to sign in. The authorization server uses its key at `/api/access`:
+`POST {"actor", "agent", "expires_in"}` issues a token, `GET ?actor=` lists who
+has given which agents access, and `DELETE {"actor", "agent"}` or
+`DELETE {"token"}` revokes. A token is valid only for the world that issued it.
+
 ## Records
 
 The core primitive in World is the record.

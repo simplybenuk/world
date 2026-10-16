@@ -164,7 +164,9 @@ def handle(handler, method):
     try:
         actor_id = handler._actor()
     except ClientError as error:
-        return handler._respond(401, _error(request_id, -32000, error.message), headers={"WWW-Authenticate": 'Bearer realm="world"'})
+        presented = handler.headers.get("Authorization", "").startswith("Bearer ")
+        return handler._respond(401, _error(request_id, -32000, error.message),
+                                headers={"WWW-Authenticate": handler.challenge("invalid_token" if presented else None)})
     if "id" not in message:
         return handler._respond(202, None)  # a notification, such as notifications/initialized
 
