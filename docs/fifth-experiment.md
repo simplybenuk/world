@@ -1,10 +1,14 @@
 # Fifth experiment: real data
 
-In progress. This is step 1 of [the plan](plan.md). The earlier experiments used
-seeded or generated records. This one loads real public data, so the text,
-distributions, and mess are those of a working team. So far World's side is
-built and measured without a model, the EspoCRM control holds the same
-records, and a third agent is ready. The agent runs are still to do.
+This is step 1 of [the plan](plan.md). The earlier experiments used seeded or
+generated records. This one loads real public data, so the text,
+distributions, and mess are those of a working team. Three agents ran twenty
+tasks three times each on World and on EspoCRM, both holding the same 896,608
+records.
+
+In short: Codex and Claude Code were equally correct on both sides and needed
+about half the calls or fewer on World. A weaker free model, Xiaomi's MiMo, got
+every task right on World and fewer than six in ten on EspoCRM.
 
 ## The data
 
@@ -161,9 +165,11 @@ empty answer.
 
 ## The third agent
 
-`bench/agents/opencode.sh` runs opencode with NVIDIA's Nemotron 3 Ultra, an
-open-weights model from a third family beside Codex's and Claude's. It uses
-opencode's free tier, so its runs spend no one's account.
+`bench/agents/opencode.sh` runs opencode with Xiaomi's MiMo 2.6 Flash
+(`opencode/mimo-v2.6-flash-free`), a model from a third family beside Codex's
+and Claude's. It uses opencode's free tier, so its runs spend no one's account.
+NVIDIA's Nemotron 3 Ultra was tried first, and its free tier was overloaded
+most of the time.
 
 ```sh
 python3 -m bench agent --domain tracker --command bench/agents/opencode.sh --label opencode --repeat 3
@@ -250,11 +256,86 @@ That takes about 6.5 seconds, probably because EspoCRM sorts every list by
 creation time and does not index the number. That is how it ships, so an agent
 will pay the same cost.
 
-## Still to do
+## The runs
 
-The runs: each agent, each task, three times, on both sides.
+Each agent ran each task three times on each side, from 2026-10-15 to
+2026-10-16, with a limit of ten minutes a run. `python3 -m bench.compare`
+judges every answer again with the final checkers, so a checker fixed during
+the runs judges every run alike.
+
+```sh
+python3 -m bench agent --domain tracker --repeat 3
+python3 -m bench agent --domain tracker --control --repeat 3
+python3 -m bench agent --domain tracker --repeat 3 --command bench/agents/claude.sh --label claude
+python3 -m bench agent --domain tracker --repeat 3 --command bench/agents/opencode.sh --label opencode
+python3 -m bench.compare --domain tracker codex claude opencode
+```
+
+| Agent | Side | Correct | Calls | Rejected | Agent time | Median read a run |
+| --- | --- | --- | --- | --- | --- | --- |
+| Codex | World | 60 of 60 | 225 | 4 | 1,475 s | 21 KB |
+| Codex | EspoCRM | 60 of 60 | 431 | 11 | 2,630 s | 802 KB |
+| Claude Code | World | 59 of 60 | 235 | 7 | 742 s | 22 KB |
+| Claude Code | EspoCRM | 59 of 60 | 719 | 153 | 1,676 s | 716 KB |
+| opencode | World | 60 of 60 | 408 | 73 | 3,863 s | 31 KB |
+| opencode | EspoCRM | 14 of 25 | 1,314 | 172 | 10,549 s | not kept |
+
+- **Codex** used 52% of the calls and 56% of the time on World.
+- **Claude Code** used 33% of the calls and 44% of the time. Its one miss on
+  World left a duplicate open. Its one miss on EspoCRM never found the custom issue
+  entity among EspoCRM's built-in ones, and gave up.
+- **opencode** finished only 25 of its 60 EspoCRM runs. On those 25 tasks and
+  runs, World took 173 calls and 1,959 s and got all 25 right. EspoCRM took
+  1,314 calls and 10,549 s and got 14 right. Ten of the eleven misses were
+  timeouts after 34 to 349 calls, so its time on EspoCRM is understated. The
+  other miss assigned an issue to two people instead of one.
+- **Reading.** An agent read about 21 to 31 KB a run on World, and 716 to
+  802 KB on EspoCRM, mostly EspoCRM's metadata.
+- **Refusals.** All three agents refused all three wrong requests on World. On
+  EspoCRM, Codex and Claude Code did too. opencode timed out on all three.
+
+Part of EspoCRM's time is its own. Finding an issue by its number takes it
+about 6.5 seconds, as the scripted runs showed.
+
+### What the runs needed
+
+- **Provider failures.** opencode's free tier was often overloaded or rate
+  limited. `opencode.sh` now stops a run at the first provider error and exits
+  75. The runner then discards the attempt and starts the run again, after
+  waiting 1, 2, 4, 8, and then 15 minutes, up to six times. Discarded attempts
+  are counted in the results: two on World and three on EspoCRM.
+- **Orphaned agents.** A timed-out run left its opencode process running and
+  calling the provider, and seven of them were probably what got the free tier
+  rate limited. The runner now stops the agent's whole process group.
+- **opencode's EspoCRM batch stopped** on 2026-10-16 at 05:38 UTC, during its
+  26th run, and the runner only saved results when a batch finished. Its 25
+  finished runs are rebuilt from the log, which keeps each run's judgment,
+  calls, rejections, and time but not its answer or bytes read. A 26th run that
+  the provider never answered is left out. The runner now saves after every
+  run. The other 35 runs were not repeated: the result was already clear, and
+  the free tier was limiting again.
+- **A first World batch with MiMo** got 57 of 60 while orphaned agents were
+  running. It was run again from the start, and the second batch is the one
+  reported. The first is kept as well.
+- **Checkers.** Four of Codex's EspoCRM refusals said "the API denied edit
+  access". The refusal checker now accepts the server's own words, such as
+  denied, forbidden, and 403.
+
+## What it shows
+
+On real data at nearly a million records, the earlier result holds for both
+strong agents: the same correctness, with about half the calls or fewer and
+half the time on World. The weaker model shows a different side of it. It
+needed no more than a strong model to succeed on World, but EspoCRM's 198 KB
+description and its guessing about which entity holds what were too much for
+it in 11 runs of 25. So the less capable the agent, the more the record
+layer decides whether a task gets done at all.
+
+Whether this is enough to go on to step 2 is Ben's decision.
 
 ## Raw results
 
 In `docs/results/`: `build-tracker.json`, `verify-tracker.txt`,
-`measure-tracker.txt`, `report-tracker.json`, and `control-tracker.json`.
+`measure-tracker.txt`, `report-tracker.json`, and `control-tracker.json`, and
+the agent runs listed in [its README](results/README.md), judged again by
+`bench.compare` in `compare-tracker.txt`.

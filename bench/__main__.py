@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -303,35 +304,51 @@ def agent(args):
     users = None
     if args.control:
         users = control_module().setup()
+    name = f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json"
     rows = []
     for run in range(1, args.repeat + 1):
         for task in tasks:
-            target = control_target(task, users) if args.control else world_target(task, args.label)
-            with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
-                answer_file = Path(workspace) / "answer.txt"
-                command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
-                if args.command and (ROOT / command[0]).is_file():
-                    command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
-                environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
-                started = time.monotonic()
-                try:
-                    process = subprocess.run(command, input=prompt, capture_output=True, text=True, timeout=args.timeout,
-                                             cwd=workspace, env=environment)
-                    output, timed_out = process.stdout, False
-                except subprocess.TimeoutExpired:
-                    output, timed_out = "", True
-                seconds = round(time.monotonic() - started, 1)
-                answer = answer_file.read_text() if answer_file.exists() else output
-                failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
-                if not meter.requests:
-                    failures = ["The agent made no requests."]
-                rows.append({
-                    "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
-                    "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
-                    "audit": [] if args.control else recent_audit(meter.store),
-                })
-                print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
-                      f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
+            discarded = 0
+            while True:
+                target = control_target(task, users) if args.control else world_target(task, args.label)
+                with target as (prompt, meter, finish), tempfile.TemporaryDirectory(prefix="world-agent-") as workspace:
+                    answer_file = Path(workspace) / "answer.txt"
+                    command = shlex.split(args.command) if args.command else codex_command(workspace, str(answer_file))
+                    if args.command and (ROOT / command[0]).is_file():
+                        command[0] = str(ROOT / command[0])  # the agent runs in its workspace, so a path from the repository must be made whole
+                    environment = {**os.environ, "WORLD_ANSWER_FILE": str(answer_file)}
+                    started = time.monotonic()
+                    # Its own process group, so that a timeout stops everything the agent started.
+                    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                               text=True, cwd=workspace, env=environment, start_new_session=True)
+                    try:
+                        output, timed_out = process.communicate(prompt, timeout=args.timeout)[0], False
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.communicate()
+                        output, timed_out = "", True
+                    seconds = round(time.monotonic() - started, 1)
+                    if not timed_out and process.returncode == UNAVAILABLE and discarded < 6:
+                        # The agent's model provider failed, which says nothing about the records. Start again from the beginning.
+                        discarded += 1
+                        print(f"{task.id} run {run}: provider unavailable, attempt {discarded} discarded "
+                              f"({len(meter.requests)} calls)", flush=True)
+                        time.sleep(min(60 * 2 ** (discarded - 1), 900))
+                        continue
+                    answer = answer_file.read_text() if answer_file.exists() else output
+                    failures, own_reasons = (["The agent timed out."], None) if timed_out else finish(answer)
+                    if not meter.requests and not timed_out:
+                        failures = ["The agent made no requests."]
+                    rows.append({
+                        "task": task.id, "run": run, "correct": not failures, "failures": failures, **meter.usage(), "seconds": seconds,
+                        "requests": [list(request) for request in meter.requests], "answer": answer.strip(), "own_reasons": own_reasons,
+                        "audit": [] if args.control else recent_audit(meter.store), "discarded_attempts": discarded,
+                    })
+                    print(f"{task.id} run {run}: {'correct' if not failures else '; '.join(failures)} "
+                          f"({rows[-1]['calls']} calls, {rows[-1]['rejected']} rejected, {seconds}s)", flush=True)
+                    OUTPUT.mkdir(parents=True, exist_ok=True)
+                    (OUTPUT / name).write_text(json.dumps(rows, indent=2) + "\n")  # so a batch that dies keeps the runs it finished
+                    break
     print()
     reasons = {True: "yes", False: "no", None: "n/a"}
     print(table(["Task", "Run", "Correct", "Calls", "Rejected", "Bytes read", "Rough tokens", "Seconds", "Gave its own reasons"], [
@@ -339,10 +356,11 @@ def agent(args):
          f"{tokens(row['bytes_read']):,}", row["seconds"], reasons[row["own_reasons"]]) for row in rows]))
     print(f"\n{sum(row['correct'] for row in rows)} of {len(rows)} task runs correct, {sum(row['calls'] for row in rows)} calls, "
           f"{sum(row['rejected'] for row in rows)} rejected.")
-    save(f"agent-{domain.WORLD}-{'control-' if args.control else ''}{args.label}.json", rows)
+    save(name, rows)
 
 
 DEFAULT_REASON = "Reason: Changed through the World client"
+UNAVAILABLE = 75  # an agent command exits with this when its model provider failed, and the run is repeated from the start
 
 
 def recent_audit(store):
@@ -356,7 +374,8 @@ def main():
     runner = commands.add_parser("agent", help="Run the tasks with an agent; this uses that agent's model account")
     commands.add_parser("control", help="Measure the EspoCRM control without a model")
     runner.add_argument("--command", help="Agent command. It receives the prompt on standard input and WORLD_ANSWER_FILE in its "
-                        "environment. Its answer is that file, or else its standard output. Default: codex exec")
+                        "environment. Its answer is that file, or else its standard output. It exits 75 when its model "
+                        "provider failed, and the run is repeated from the start. Default: codex exec")
     runner.add_argument("--control", action="store_true", help="Run against EspoCRM instead of World")
     runner.add_argument("--repeat", type=int, default=1, help="Run every task this many times")
     runner.add_argument("--task", action="append", help="Run only this task; repeatable")

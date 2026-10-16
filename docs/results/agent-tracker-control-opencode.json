@@ -1,0 +1,299 @@
+[
+  {
+    "task": "read-issue",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 47,
+    "rejected": 9,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "read-pr",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 34,
+    "rejected": 6,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "read-labels",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 10,
+    "rejected": 0,
+    "seconds": 118.6,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "count-label",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 34,
+    "rejected": 10,
+    "seconds": 421.9,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "count-mine",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 349,
+    "rejected": 8,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "assigned",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 34,
+    "rejected": 7,
+    "seconds": 600.1,
+    "discarded_attempts": 1,
+    "from_log": true
+  },
+  {
+    "task": "count-milestone",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 70,
+    "rejected": 19,
+    "seconds": 572.9,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "search-mine",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 96,
+    "rejected": 9,
+    "seconds": 456.0,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "search-open",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 27,
+    "rejected": 1,
+    "seconds": 388.0,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "search-comments",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 31,
+    "rejected": 3,
+    "seconds": 389.6,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "comment",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 41,
+    "rejected": 9,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "label",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 27,
+    "rejected": 3,
+    "seconds": 221.2,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "close",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 58,
+    "rejected": 12,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "open-issue",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 11,
+    "rejected": 2,
+    "seconds": 112.6,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "triage",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "redis #15009 is not assigned to sundb alone."
+    ],
+    "calls": 27,
+    "rejected": 7,
+    "seconds": 265.3,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "duplicate",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 30,
+    "rejected": 0,
+    "seconds": 329.7,
+    "discarded_attempts": 1,
+    "from_log": true
+  },
+  {
+    "task": "milestone",
+    "run": 1,
+    "correct": true,
+    "failures": [],
+    "calls": 15,
+    "rejected": 2,
+    "seconds": 207.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "locked",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 38,
+    "rejected": 3,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "other-project",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 35,
+    "rejected": 2,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "assign",
+    "run": 1,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 140,
+    "rejected": 37,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "read-issue",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 35,
+    "rejected": 7,
+    "seconds": 373.9,
+    "discarded_attempts": 1,
+    "from_log": true
+  },
+  {
+    "task": "read-pr",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "seconds": 68.4,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "read-labels",
+    "run": 2,
+    "correct": false,
+    "failures": [
+      "The agent timed out."
+    ],
+    "calls": 63,
+    "rejected": 9,
+    "seconds": 600.1,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "count-label",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 33,
+    "rejected": 7,
+    "seconds": 474.0,
+    "discarded_attempts": 0,
+    "from_log": true
+  },
+  {
+    "task": "count-mine",
+    "run": 2,
+    "correct": true,
+    "failures": [],
+    "calls": 24,
+    "rejected": 0,
+    "seconds": 148.8,
+    "discarded_attempts": 0,
+    "from_log": true
+  }
+]

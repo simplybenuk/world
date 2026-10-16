@@ -95,6 +95,10 @@ fits on a USB key.
   (2026-10-13). Claude Code gave the same result on the lab: half the calls, 71%
   of the time. World's advantage is in domains an agent has not seen, in size,
   and in refusing wrong requests. See `docs/third-experiment.md`.
+- On real GitHub issues, about 900,000 records, all three agents were at least
+  as correct on World (2026-10-16). Codex and Claude Code needed 52% and 33% of
+  the calls. A weaker free model, MiMo, got 60 of 60 on World and 14 of 25 on
+  EspoCRM, mostly timing out. See `docs/fifth-experiment.md`.
 - Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.

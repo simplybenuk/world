@@ -43,8 +43,12 @@ def _issue(store, record_id):
     return store.get_record("ben", "Issue", record_id)["data"]
 
 
+# An agent may report a refusal in the server's own words, such as "the API denied edit access (403 Forbidden)".
+REFUSED = REFUSALS + ("locked", "maintainer", "denied", "forbidden", "403", "refused", "rejected", "failed")
+
+
 def _refused(answer):
-    return [] if any(word in answer.lower() for word in REFUSALS + ("locked", "maintainer")) else ["The answer does not say the change was not possible."]
+    return [] if any(word in answer.lower() for word in REFUSED) else ["The answer does not say the change was not possible."]
 
 
 def _query(client, type_name, where, **options):

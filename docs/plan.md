@@ -34,12 +34,15 @@ evidence, because it tests World on real data rather than generated data.
 Done when: the comparison on real data is written up with its raw results in
 `docs/results/`, and Ben has decided whether the claim holds.
 
-Progress, 2026-10-14: the dataset is `open-index/open-github-issues`, loaded as
-the `tracker` world with about 900,000 records and twenty tasks. World's side
-is measured without a model. The third agent is opencode with Nemotron 3 Ultra.
-The EspoCRM control holds the same records. The agent runs are still to do. The
-CRM and lab worlds keep their five tasks, so their results stay comparable with
-the earlier experiments. See [the fifth experiment](fifth-experiment.md).
+Progress, 2026-10-16: the dataset is `open-index/open-github-issues`, loaded as
+the `tracker` world with about 900,000 records and twenty tasks, and EspoCRM
+holds the same records. The third agent is opencode with Xiaomi's MiMo 2.6
+Flash. The runs are written up with their raw results. Codex and Claude Code
+were as correct on both sides and needed half the calls or fewer on World.
+MiMo got 60 of 60 on World and 14 of the 25 EspoCRM runs it finished. The CRM
+and lab worlds keep their five tasks, so their results stay comparable with the
+earlier experiments. See [the fifth experiment](fifth-experiment.md). What
+remains is Ben's decision on whether the claim holds.
 
 ## Step 2: a private demo
 

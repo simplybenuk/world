@@ -21,4 +21,32 @@ export OPENCODE_CONFIG_CONTENT='{
     }
   }
 }'
-exec opencode run --pure --model "${WORLD_OPENCODE_MODEL:-opencode/nemotron-3-ultra-free}" "$(cat)"
+# The free tier's provider is sometimes overloaded or rate-limited, before or part way through a run. opencode
+# then retries quietly, so its error log is watched, and the run is stopped at the first provider error.
+# Exit 75 then, and the runner discards the run and repeats it from the start.
+PROVIDER_ERROR='level=ERROR.*(providerID=|AI_APICallError|AI_RetryError)'
+prompt="$(cat)"
+opencode run --pure --print-logs --log-level ERROR --model "${WORLD_OPENCODE_MODEL:-opencode/mimo-v2.6-flash-free}" "$prompt" \
+  >"$PWD/.home/stdout" 2>"$PWD/.home/stderr" &
+agent=$!
+while kill -0 "$agent" 2>/dev/null; do
+  if grep -qE "$PROVIDER_ERROR" "$PWD/.home/stderr"; then
+    kill "$agent"
+    wait "$agent"
+    cat "$PWD/.home/stderr" >&2
+    exit 75
+  fi
+  sleep 2
+done
+wait "$agent"
+status=$?
+cat "$PWD/.home/stderr" >&2
+cat "$PWD/.home/stdout"
+if grep -qE "$PROVIDER_ERROR" "$PWD/.home/stderr"; then
+  exit 75
+fi
+# opencode prints each tool call to standard error, marked "$ " or "✗ ". No answer and no tool call is a run that never started.
+if [ ! -s "$PWD/.home/stdout" ] && ! grep -qE '(\$|✗) ' "$PWD/.home/stderr"; then
+  exit 75
+fi
+exit $status
