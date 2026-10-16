@@ -139,8 +139,9 @@ measurement shows it is the limit.
 
 ## Layout
 
-- `world/` is the engine: storage, validation, versions, history, and the HTTP
-  protocol. It must not name a type, role, or rule from any one domain.
+- `world/` is the engine: storage, validation, versions, history, the HTTP
+  protocol, and MCP at `/mcp` (`world/mcp.py`), whose tools call the same code
+  as the HTTP API. It must not name a type, role, or rule from any one domain.
 - `worlds/` holds one definition per domain: `team` (the default), `crm`,
   `lab`, `enterprise` (the lab plus 197 generated types, for scale tests), and
   `tracker` (real GitHub issues, for step 1 of the plan). A definition is data. Rules are expressions the engine evaluates and

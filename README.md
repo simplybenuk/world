@@ -150,6 +150,29 @@ A client should be able to discover:
 
 The client can then decide what interaction makes sense.
 
+### Connecting an agent
+
+Give every agent its own token, so the audit names it:
+
+```sh
+python3 -m world.server access --actor ben --agent claude
+```
+
+An agent with a shell can use the JSON API under `/api` with curl.
+`GET /api/world` describes the world and lists the operations.
+
+An agent that reaches outside services through Model Context Protocol (MCP)
+connectors, such as a chat app, connects to `POST /mcp` with the same token as a
+bearer token. It offers nine tools: `describe`, `query`, `get`, `create`,
+`update`, `delete`, `change`, `history`, and `audit`. Each goes through the same
+code as the JSON API, so it is checked and audited alike. The endpoint speaks MCP
+2026-07-28 and the earlier versions that begin with `initialize`, and keeps no
+session. For example, with Claude Code:
+
+```sh
+claude mcp add --transport http world http://localhost:8787/mcp --header "Authorization: Bearer TOKEN"
+```
+
 ## Records
 
 The core primitive in World is the record.
@@ -393,6 +416,11 @@ agent uses half the calls and 58% of the time.
 million records on one machine. It is 1.4 GB, single operations take 2 to 35 ms,
 and an agent completes the same tasks in the same time as in a 20-record world.
 EspoCRM with the same million records needed more than twice the calls.
+
+[The fifth experiment](docs/fifth-experiment.md) loads about 900,000 real GitHub
+issues and comments. Codex and Claude Code were as correct on World as on
+EspoCRM, with half the calls or fewer. A weaker free model got every task right
+on World and fewer than six in ten on EspoCRM.
 
 A [parallel line of experiments](docs/crm-world-branch.md) reached the same
 findings separately and is kept for reference.

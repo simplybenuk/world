@@ -13,6 +13,7 @@ import secrets
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from client_gateway.planner import ClientError, CodexPlanner, strict_json
+from world import mcp
 from world.store import WorldError, WorldStore
 import worlds
 
@@ -58,7 +59,17 @@ class AccessTokens:
 
         # Tokens a person has issued to software acting for them: token -> [actor, agent].
         self.agent_path = Path(data_dir) / "agent-access.json"
-        self.agents = json.loads(self.agent_path.read_text()) if self.agent_path.exists() else {}
+        self.agents, self._agents_read = {}, None
+        self._reload_agents()
+
+    def _reload_agents(self):
+        """Read the issued tokens again if the file changed, so a token issued while the world runs works at once."""
+        try:
+            changed = self.agent_path.stat().st_mtime_ns
+        except FileNotFoundError:
+            return
+        if changed != self._agents_read:
+            self.agents, self._agents_read = json.loads(self.agent_path.read_text()), changed
 
     def identify(self, token):
         """The actor a token signs in, and the agent it was issued to, if any."""
@@ -67,6 +78,7 @@ class AccessTokens:
         for actor, credential in self.tokens.items():
             if hmac.compare_digest(token, credential):
                 return actor, None
+        self._reload_agents()
         for credential, (actor, agent) in self.agents.items():
             if hmac.compare_digest(token, credential):
                 return actor, agent
@@ -81,6 +93,7 @@ class AccessTokens:
             raise ValueError(f"Unknown actor. Choose one of: {', '.join(self.tokens)}.")
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", agent):
             raise ValueError("An agent name is up to 64 letters, digits, dots, hyphens, or underscores.")
+        self._reload_agents()  # another process may have issued tokens since
         for token, issued in self.agents.items():
             if issued == [actor, agent]:
                 return token
@@ -140,6 +153,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             if method == "GET" and path == "/health":
                 return self._respond(200, {"status": "ok", "provider": "codex", "provider_available": self.server.planner.available,
                                            "world": self.server.store.definition.title, "protocol_version": "0.1"})
+            if path == "/mcp":
+                return mcp.handle(self, method)
             body = self._body() if method in {"POST", "PATCH", "DELETE"} else {}
             if method in {"POST", "PATCH", "DELETE"}:
                 self._check_origin()
@@ -154,58 +169,10 @@ class WorldHandler(BaseHTTPRequestHandler):
                 return self._respond(200, {"signed_out": True}, cookie="world_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
             actor_id = self._actor()
             store = self.server.store
-            if path == "/api/session" and method == "GET":
-                return self._respond(200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id, agent=self.agent)})
-            if path == "/api/world" and method == "GET":
-                acting = {"agent": self.agent} if self.agent else {}
-                named = parse_qs(split.query).get("types", [None])[0]
-                description = store.describe(actor_id, named.split(",") if named else None)
-                if "type_index" in description:
-                    acting["types"] = ("type_index lists every type. GET /api/world?types=A,B gives the fields, rules, "
-                                       "and what you may do for the types you name.")
-                return self._respond(200, {**description, **acting, "operations": OPERATIONS})
-            if path == "/api/records" and method == "GET":
-                query = parse_qs(split.query)
-                type_name, limit = query.get("type", [None])[0], query.get("limit", ["100"])[0]
-                if type_name is None:
-                    return self._respond(200, {"records": store.list_records(actor_id, agent=self.agent)})
-                found = store.find(actor_id, type_name, limit=int(limit) if limit.isdecimal() else 0,
-                                   after=query.get("after", [None])[0], agent=self.agent)
-                return self._respond(200, self._page(found, None))
-            if path == "/api/query" and method == "POST":
-                found = store.find(actor_id, body.get("type"), where=body.get("where"), filters=body.get("filters", []),
-                                   include=body.get("include"), limit=body.get("limit", 100), after=body.get("after"),
-                                   count=body.get("count") is True, agent=self.agent)
-                return self._respond(200, self._page(found, body.get("include")))
-            if path == "/api/changes" and method == "POST":
-                return self._respond(200, {"records": store.apply(actor_id, body.get("steps"), self._provenance(actor_id, body))})
-            parts = [unquote(part) for part in path.strip("/").split("/")]
-            if len(parts) == 3 and parts[:2] == ["api", "types"] and method == "GET":
-                if parts[2] not in store.types:
-                    raise ClientError(404, "unknown_type", "This record type does not exist.")
-                return self._respond(200, {"name": parts[2], **store.describe(actor_id, [parts[2]])["types"][parts[2]]})
-            if parts[:2] == ["api", "audit"] and len(parts) in (2, 4) and method == "GET":
-                limit = parse_qs(split.query).get("limit", ["500"])[0]
-                lines = store.audit(actor_id, *parts[2:], limit=int(limit) if limit.isdecimal() else 0)
-                return self._text(200, "".join(line + "\n" for line in lines))
-            if len(parts) == 4 and parts[:2] == ["api", "history"] and method == "GET":
-                return self._respond(200, {"events": store.history(actor_id, parts[2], parts[3], agent=self.agent)})
-            if len(parts) == 3 and parts[:2] == ["api", "records"] and method == "POST":
-                self._require_object(body, "data")
-                record = store.create(actor_id, parts[2], body.get("data"), self._provenance(actor_id, body))
-                return self._respond(201, {"record": record})
-            if len(parts) == 4 and parts[:2] == ["api", "records"]:
-                type_name, record_id = parts[2:]
-                if method == "GET":
-                    return self._respond(200, {"record": store.get_record(actor_id, type_name, record_id, agent=self.agent)})
-                if method == "PATCH":
-                    self._require_object(body, "changes")
-                    record = store.update(actor_id, type_name, record_id, body.get("changes"),
-                                          body.get("expected_version"), self._provenance(actor_id, body))
-                    return self._respond(200, {"record": record})
-                if method == "DELETE":
-                    store.delete(actor_id, type_name, record_id, body.get("expected_version"), self._provenance(actor_id, body))
-                    return self._respond(200, {"deleted": True, "type": type_name, "id": record_id})
+            answer = self._operate(method, path, split.query, body, actor_id)
+            if answer is not None:
+                status, value = answer
+                return self._text(status, value) if isinstance(value, str) else self._respond(status, value)
             if path == "/client/intent" and method == "POST":
                 # These records leave the service for a model, so the audit names the gateway.
                 result = self.server.planner.plan(store.describe(actor_id), store.list_records(actor_id, agent=self.agent or "client-gateway"),
@@ -223,6 +190,64 @@ class WorldHandler(BaseHTTPRequestHandler):
         except Exception:
             logging.exception("World request failed")
             self._respond(500, {"error": {"code": "internal_error", "message": "The server could not finish this request."}})
+
+    def _operate(self, method, path, query, body, actor_id):
+        """One record operation as (status, value), where text is a str; None when no operation has this path.
+        The HTTP API and the MCP tools both come here, so they behave and audit alike."""
+        store = self.server.store
+        if path == "/api/session" and method == "GET":
+            return (200, {"actor": store.get_record(actor_id, store.definition.actor_type, actor_id, agent=self.agent)})
+        if path == "/api/world" and method == "GET":
+            acting = {"agent": self.agent} if self.agent else {}
+            named = parse_qs(query).get("types", [None])[0]
+            description = store.describe(actor_id, named.split(",") if named else None)
+            if "type_index" in description:
+                acting["types"] = ("type_index lists every type. GET /api/world?types=A,B gives the fields, rules, "
+                                   "and what you may do for the types you name.")
+            return (200, {**description, **acting, "operations": OPERATIONS})
+        if path == "/api/records" and method == "GET":
+            query = parse_qs(query)
+            type_name, limit = query.get("type", [None])[0], query.get("limit", ["100"])[0]
+            if type_name is None:
+                return (200, {"records": store.list_records(actor_id, agent=self.agent)})
+            found = store.find(actor_id, type_name, limit=int(limit) if limit.isdecimal() else 0,
+                               after=query.get("after", [None])[0], agent=self.agent)
+            return (200, self._page(found, None))
+        if path == "/api/query" and method == "POST":
+            found = store.find(actor_id, body.get("type"), where=body.get("where"), filters=body.get("filters", []),
+                               include=body.get("include"), limit=body.get("limit", 100), after=body.get("after"),
+                               count=body.get("count") is True, agent=self.agent)
+            return (200, self._page(found, body.get("include")))
+        if path == "/api/changes" and method == "POST":
+            return (200, {"records": store.apply(actor_id, body.get("steps"), self._provenance(actor_id, body))})
+        parts = [unquote(part) for part in path.strip("/").split("/")]
+        if len(parts) == 3 and parts[:2] == ["api", "types"] and method == "GET":
+            if parts[2] not in store.types:
+                raise ClientError(404, "unknown_type", "This record type does not exist.")
+            return (200, {"name": parts[2], **store.describe(actor_id, [parts[2]])["types"][parts[2]]})
+        if parts[:2] == ["api", "audit"] and len(parts) in (2, 4) and method == "GET":
+            limit = parse_qs(query).get("limit", ["500"])[0]
+            lines = store.audit(actor_id, *parts[2:], limit=int(limit) if limit.isdecimal() else 0)
+            return (200, "".join(line + "\n" for line in lines))
+        if len(parts) == 4 and parts[:2] == ["api", "history"] and method == "GET":
+            return (200, {"events": store.history(actor_id, parts[2], parts[3], agent=self.agent)})
+        if len(parts) == 3 and parts[:2] == ["api", "records"] and method == "POST":
+            self._require_object(body, "data")
+            record = store.create(actor_id, parts[2], body.get("data"), self._provenance(actor_id, body))
+            return (201, {"record": record})
+        if len(parts) == 4 and parts[:2] == ["api", "records"]:
+            type_name, record_id = parts[2:]
+            if method == "GET":
+                return (200, {"record": store.get_record(actor_id, type_name, record_id, agent=self.agent)})
+            if method == "PATCH":
+                self._require_object(body, "changes")
+                record = store.update(actor_id, type_name, record_id, body.get("changes"),
+                                      body.get("expected_version"), self._provenance(actor_id, body))
+                return (200, {"record": record})
+            if method == "DELETE":
+                store.delete(actor_id, type_name, record_id, body.get("expected_version"), self._provenance(actor_id, body))
+                return (200, {"deleted": True, "type": type_name, "id": record_id})
+        return None
 
     def _actor(self):
         authorization = self.headers.get("Authorization", "")
@@ -324,7 +349,7 @@ class WorldHandler(BaseHTTPRequestHandler):
             value += "; Secure"
         return value
 
-    def _headers(self, content_type, length, cookie=None):
+    def _headers(self, content_type, length, cookie=None, extra=None):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
@@ -333,6 +358,8 @@ class WorldHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
         if cookie:
             self.send_header("Set-Cookie", cookie)
+        for name, value in (extra or {}).items():
+            self.send_header(name, value)
         self.end_headers()
 
     def _text(self, status, text):
@@ -343,12 +370,12 @@ class WorldHandler(BaseHTTPRequestHandler):
         self._headers("text/plain; charset=utf-8", len(data))
         self.wfile.write(data)
 
-    def _respond(self, status, value, cookie=None):
-        data = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
+    def _respond(self, status, value, cookie=None, headers=None):
+        data = b"" if value is None else json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
         if self.server.meter:
             self.server.meter(self.command, self.path, status, len(data))
         self.send_response(status)
-        self._headers("application/json; charset=utf-8", len(data), cookie)
+        self._headers("application/json; charset=utf-8", len(data), cookie, headers)
         self.wfile.write(data)
 
     def _static(self, path):
