@@ -53,7 +53,9 @@ on World would need, such as the MCP server, is done in World.
 
 1. **A standard way for agents to connect.** Offer the protocol as a Model
    Context Protocol (MCP) server, so connecting an agent means adding a
-   connector, not pasting a prompt.
+   connector, not pasting a prompt. Done in World on 2026-10-16: `POST /mcp`
+   with nine general tools and a bearer token. Chat apps' connectors sign in
+   with OAuth, which is still to do, and belongs in World too.
 2. **Accounts and one world per team.** Sign-up, inviting members, and letting
    people issue and revoke tokens for their own agents.
 3. **Changing a world while it runs.** A team will want its own statuses and
