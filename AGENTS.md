@@ -32,12 +32,31 @@ work is experiments and improvements against the two aims above. Do not start
 building or hosting a public demo before Ben says the evidence is enough. The
 demo is planned in `docs/plan.md`. Hosting it needs Ben's decision.
 
+Ben, 2026-10-16: the claim holds. The evidence is enough to build the demo.
+
 ### The plan to a public demo
 
 Ben, 2026-10-14. Follow `docs/plan.md`. In short: firm up the evidence on a
 large real dataset, then build a private demo of a team tool where people bring
-their own agents, then open it to the public. Step 1 is under way. Update the
-plan when a step finishes or a decision changes it.
+their own agents, then open it to the public. Step 1 is done (2026-10-16).
+Update the plan when a step finishes or a decision changes it.
+
+### World is a database for agents, and the demo lives in its own repository
+
+Ben, 2026-10-16. World is a database, not a language, protocol, or standard. It
+has a definition language and a protocol, as SQL databases have a dialect and a
+wire protocol. It becomes a standard only if someone builds a second engine for
+its protocol.
+
+The demo is World's first user and lives in a separate repository. Whatever
+another product built on World would also need belongs in World: the engine,
+the protocol, the MCP server, agent tokens and `person via agent`, and changing
+a world's definition while it runs. Accounts, teams, sign-up, token pages, the
+team-tool definition, the audit page people see, and hosting belong in the
+demo. When the demo has to work around World, fix World.
+
+"World" is a working name. Ben is looking for a better one. "Agentbase" is
+taken by several agent-memory projects.
 
 ### Order of improvements
 
