@@ -1,0 +1,326 @@
+[
+  {
+    "task": "who-has-drill",
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 5867,
+    "seconds": 10.5,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        822
+      ]
+    ],
+    "answer": "Ian Ross has the cordless drill. It\u2019s due back on 24 October 2026."
+  },
+  {
+    "task": "available",
+    "correct": true,
+    "failures": [],
+    "calls": 2,
+    "rejected": 0,
+    "bytes_read": 6041,
+    "seconds": 15.8,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5093
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        948
+      ]
+    ],
+    "answer": "You can borrow the cordless drill, extension ladder, orbital sander, or circular saw right now. None has an active loan, and your membership and safety induction are valid."
+  },
+  {
+    "task": "lend",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 5917,
+    "seconds": 16.8,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        292
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        248
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/records/Loan",
+        201,
+        318
+      ]
+    ],
+    "answer": "Recorded the extension ladder loan to Dev Mehta from 2026-10-17, due back 2026-10-24."
+  },
+  {
+    "task": "return",
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 6169,
+    "seconds": 17.9,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        822
+      ],
+      [
+        "PATCH",
+        "/api/records/Loan/loan-ian-drill",
+        200,
+        302
+      ]
+    ],
+    "answer": "Recorded Ian Ross\u2019s cordless drill return dated 2026-10-17."
+  },
+  {
+    "task": "reserve",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 5623,
+    "seconds": 14.1,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5093
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        242
+      ],
+      [
+        "GET",
+        "/api/records?type=Reservation",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/records/Reservation",
+        201,
+        274
+      ]
+    ],
+    "answer": "Reserved the circular saw for you, Dev Mehta."
+  },
+  {
+    "task": "induction",
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 5625,
+    "seconds": 15.8,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        292
+      ],
+      [
+        "PATCH",
+        "/api/records/Person/ian",
+        200,
+        288
+      ]
+    ],
+    "answer": "Recorded Ian Ross\u2019s safety induction as completed, with 2026-10-17 noted as the completion date."
+  },
+  {
+    "task": "refuse-induction",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 1,
+    "bytes_read": 7826,
+    "seconds": 15.0,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "GET",
+        "/api/records/Person",
+        404,
+        123
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        942
+      ],
+      [
+        "GET",
+        "/api/records?type=Person",
+        200,
+        1125
+      ],
+      [
+        "GET",
+        "/api/records?type=Loan",
+        200,
+        591
+      ]
+    ],
+    "answer": "Could not lend the circular saw to Ian: his record shows he has not completed the required safety induction. No records were changed."
+  },
+  {
+    "task": "refuse-expired",
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 5585,
+    "seconds": 13.2,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        247
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        293
+      ]
+    ],
+    "answer": "Could not create the loan: Hana Sato\u2019s membership expired on 2026-09-30. The service requires a current membership. No records were changed."
+  },
+  {
+    "task": "refuse-on-loan",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 5880,
+    "seconds": 14.5,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        246
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        292
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        297
+      ]
+    ],
+    "answer": "Could not lend the cordless drill to Dev: it is currently on loan to Ian, due back 2026-10-24. No records were changed."
+  },
+  {
+    "task": "refuse-too-long",
+    "correct": false,
+    "failures": [
+      "The answer does not say the change was not made."
+    ],
+    "calls": 1,
+    "rejected": 0,
+    "bytes_read": 5045,
+    "seconds": 9.7,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        5045
+      ]
+    ],
+    "answer": "I couldn\u2019t create the loan: October 17 to November 14 is 28 days, but the service allows at most 14 days. The latest permitted due date is October 31. No records were changed."
+  }
+]

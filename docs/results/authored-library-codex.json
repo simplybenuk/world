@@ -1,0 +1,292 @@
+{
+  "name": "elm_street_tool_library",
+  "title": "Elm Street Tool Library",
+  "version": "1",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "Library staff and members.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "role": {
+          "type": "enum",
+          "values": [
+            "staff",
+            "member"
+          ],
+          "required": true
+        },
+        "membership_until": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        },
+        "safety_induction": {
+          "type": "boolean",
+          "required": true,
+          "default": false,
+          "write_rule": "actor.role == 'staff'"
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or record.id == actor.id",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "actor.role == 'staff'"
+      },
+      "constraints": [
+        {
+          "check": "record.role != 'member' or record.membership_until is not None",
+          "message": "A member must have a membership expiry date.",
+          "fields": [
+            "membership_until"
+          ]
+        }
+      ]
+    },
+    "Tool": {
+      "description": "Tools available through the library.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "power_saw": {
+          "type": "boolean",
+          "required": true,
+          "default": false
+        }
+      },
+      "rules": {
+        "read": "actor.role in ('staff', 'member')",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "actor.role == 'staff'"
+      }
+    },
+    "Loan": {
+      "description": "A loan and its return history. The tool, borrower, and checkout date cannot be changed after creation.",
+      "fields": {
+        "tool": {
+          "type": "reference",
+          "target": "Tool",
+          "required": true,
+          "write_rule": "False"
+        },
+        "member": {
+          "type": "reference",
+          "target": "Person",
+          "required": true,
+          "write_rule": "False"
+        },
+        "out": {
+          "type": "date",
+          "required": true,
+          "write_rule": "False"
+        },
+        "due": {
+          "type": "date",
+          "required": true
+        },
+        "returned": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or (actor.role == 'member' and record.member == actor.id)",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "False"
+      },
+      "constraints": [
+        {
+          "check": "record.member.role == 'member' and record.member.membership_until >= today() and record.out <= record.member.membership_until",
+          "message": "Only members with an unexpired membership may borrow, and checkout must fall within their membership.",
+          "fields": [
+            "member",
+            "out"
+          ],
+          "on": [
+            "create"
+          ]
+        },
+        {
+          "check": "days(record.out, record.due) >= 0 and days(record.out, record.due) <= 14",
+          "message": "A loan must be due between zero and fourteen days after checkout.",
+          "fields": [
+            "out",
+            "due"
+          ]
+        },
+        {
+          "check": "record.returned is None or days(record.out, record.returned) >= 0",
+          "message": "A return cannot precede checkout.",
+          "fields": [
+            "returned"
+          ]
+        },
+        {
+          "check": "record.returned is not None or not any(l.returned is None and l.id != record.id for l in Loan if l.tool == record.tool)",
+          "message": "A tool can be out on only one loan at a time.",
+          "fields": [
+            "tool",
+            "returned"
+          ]
+        },
+        {
+          "check": "not record.tool.power_saw or record.member.safety_induction",
+          "message": "Power saws may be lent only to members who have completed the safety induction.",
+          "fields": [
+            "tool",
+            "member"
+          ],
+          "on": [
+            "create"
+          ]
+        },
+        {
+          "check": "record.returned is not None or not record.tool.power_saw or record.member.safety_induction",
+          "message": "An outstanding power saw loan requires the borrower's safety induction.",
+          "fields": [
+            "tool",
+            "member",
+            "returned"
+          ]
+        }
+      ]
+    },
+    "Reservation": {
+      "description": "A member's reservation for a tool.",
+      "fields": {
+        "tool": {
+          "type": "reference",
+          "target": "Tool",
+          "required": true
+        },
+        "member": {
+          "type": "reference",
+          "target": "Person",
+          "required": true,
+          "default": "$actor",
+          "write_rule": "actor.role == 'staff'"
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or (actor.role == 'member' and record.member == actor.id)",
+        "create": "actor.role == 'staff' or (actor.role == 'member' and record.member == actor.id)",
+        "update": "actor.role == 'staff' or (actor.role == 'member' and record.member == actor.id)",
+        "delete": "actor.role == 'staff' or (actor.role == 'member' and record.member == actor.id)"
+      },
+      "constraints": [
+        {
+          "check": "record.member.role == 'member'",
+          "message": "A reservation must be for a member.",
+          "fields": [
+            "member"
+          ]
+        }
+      ]
+    }
+  },
+  "records": [
+    {
+      "type": "Person",
+      "id": "grace",
+      "data": {
+        "name": "Grace Okoye",
+        "role": "staff",
+        "membership_until": null,
+        "safety_induction": false
+      }
+    },
+    {
+      "type": "Person",
+      "id": "dev",
+      "data": {
+        "name": "Dev Mehta",
+        "role": "member",
+        "membership_until": "2027-03-31",
+        "safety_induction": true
+      }
+    },
+    {
+      "type": "Person",
+      "id": "hana",
+      "data": {
+        "name": "Hana Sato",
+        "role": "member",
+        "membership_until": "2026-09-30",
+        "safety_induction": false
+      }
+    },
+    {
+      "type": "Person",
+      "id": "ian",
+      "data": {
+        "name": "Ian Ross",
+        "role": "member",
+        "membership_until": "2027-01-31",
+        "safety_induction": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "drill-01",
+      "data": {
+        "name": "Cordless drill",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "ladder-01",
+      "data": {
+        "name": "Extension ladder",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "saw-01",
+      "data": {
+        "name": "Circular saw",
+        "power_saw": true
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "sander-01",
+      "data": {
+        "name": "Orbital sander",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Loan",
+      "id": "loan-ian-drill",
+      "data": {
+        "tool": "drill-01",
+        "member": "ian",
+        "out": "2026-10-10",
+        "due": "2026-10-24",
+        "returned": null
+      }
+    },
+    {
+      "type": "Loan",
+      "id": "loan-dev-sander",
+      "data": {
+        "tool": "sander-01",
+        "member": "dev",
+        "out": "2026-09-01",
+        "due": "2026-09-14",
+        "returned": "2026-09-12"
+      }
+    }
+  ]
+}

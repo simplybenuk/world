@@ -82,6 +82,7 @@ def _found(events, spec):
 
 
 def judge(task, events, answer):
+    answer = answer.replace("\u2019", "'")  # a typographic apostrophe, as in couldn’t
     failures = []
     for alternatives in task.answer:
         if not any(re.search(alternative[3:], answer, re.IGNORECASE) if alternative.startswith("re:")

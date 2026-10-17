@@ -11,3 +11,10 @@ library refuse-induction 422 Power saws are lent only to members who have done t
 library refuse-expired 422 Nobody may borrow once their membership has run out.
 library refuse-on-loan 422 That tool is already out on another loan.
 library refuse-too-long 201 ACCEPTED
+
+Codex's library world, written after days() and today() were added (2026-10-17):
+
+library-codex refuse-induction 422 Power saws may be lent only to members who have completed the safety induction.
+library-codex refuse-expired 422 Only members with an unexpired membership may borrow, and checkout must fall within their membership.
+library-codex refuse-on-loan 422 A tool can be out on only one loan at a time.
+library-codex refuse-too-long 422 A loan must be due between zero and fourteen days after checkout.
