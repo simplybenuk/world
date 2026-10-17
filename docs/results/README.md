@@ -85,6 +85,8 @@ stopped before it saved them.
 | `authored-*-attempts.json` | Each author's attempts, and why World refused any |
 | `authoring-clinic-claude.json`, `authoring-festival-claude.json`, `authoring-library-claude.json` | The ten tasks on each authored world, as judged when run |
 | `authoring-enforcement.txt` | Each refusal's forbidden write sent straight to the authored world |
+| `authored-library-codex.json`, `authored-library-codex-attempts.json` | Codex's library world, written after `days()` was added |
+| `authoring-library-codex.json` | Codex on the ten tasks of that world, as judged when run |
 
 The task files are as judged when run. Two checks were too narrow and were widened afterwards; see the
 experiment.
