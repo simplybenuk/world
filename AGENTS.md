@@ -75,6 +75,16 @@ plain browser JavaScript, with no packages or build step without Ben's
 agreement. An OAuth server needs only hashing and random tokens, which the
 standard library has.
 
+### Access lasts until it is revoked
+
+Ben, 2026-10-17, on Claude's recommendation. Giving an agent access creates a
+grant that stands until someone revokes it. Its tokens expire and are renewed
+under it without an audit line. Before this, access lasted only while an
+unexpired token existed, so an agent renewing after a quiet weekend added a
+`gave access` line the person never made, and the audit of access stopped being
+true. An authorization server renews with `"renew": true`, which refuses when
+the access was revoked. To be released as `v0.1.1`.
+
 ### Order of improvements
 
 Ben, 2026-10-13. After the third experiment, work in this order:
