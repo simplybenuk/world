@@ -448,6 +448,12 @@ issues and comments. Codex and Claude Code were as correct on World as on
 EspoCRM, with half the calls or fewer. A weaker free model got every task right
 on World and fewer than six in ten on EspoCRM.
 
+[The sixth experiment](docs/sixth-experiment.md) has an agent that had never
+seen World write worlds for a vet clinic, a festival rota, and a tool library from
+plain-language briefs. A fresh agent then did all 30 tasks correctly. World
+enforced 9 of the 10 refusals itself. The tenth needed date arithmetic, which
+the rule language lacks.
+
 A [parallel line of experiments](docs/crm-world-branch.md) reached the same
 findings separately and is kept for reference.
 

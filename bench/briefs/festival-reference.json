@@ -1,0 +1,77 @@
+{
+  "name": "festival",
+  "title": "Riverside Folk Festival volunteer rota",
+  "version": "1",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A volunteer or the coordinator.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 200},
+        "role": {"type": "enum", "required": true, "values": ["coordinator", "volunteer"]},
+        "under_18": {"type": "boolean", "default": false}
+      },
+      "rules": {"read": "actor.id is not None", "create": "actor.role == 'coordinator'",
+                "update": "actor.role == 'coordinator'", "delete": "False"}
+    },
+    "Team": {
+      "description": "A team of volunteers with a lead.",
+      "fields": {
+        "name": {"type": "text", "required": true, "min_length": 1, "max_length": 200},
+        "lead": {"type": "reference", "target": "Person", "nullable": true, "default": null}
+      },
+      "rules": {"read": "actor.id is not None", "create": "actor.role == 'coordinator'",
+                "update": "actor.role == 'coordinator'", "delete": "actor.role == 'coordinator'"}
+    },
+    "Shift": {
+      "description": "A stretch of time a team needs volunteers for. Times are 24-hour HH:MM.",
+      "fields": {
+        "team": {"type": "reference", "target": "Team", "required": true},
+        "place": {"type": "text", "nullable": true, "default": null, "max_length": 200},
+        "date": {"type": "date", "required": true},
+        "starts": {"type": "text", "required": true, "min_length": 5, "max_length": 5},
+        "ends": {"type": "text", "required": true, "min_length": 5, "max_length": 5},
+        "needed": {"type": "integer", "required": true, "min": 1, "max": 500}
+      },
+      "rules": {"read": "actor.id is not None", "create": "actor.role == 'coordinator'",
+                "update": "actor.role == 'coordinator'", "delete": "actor.role == 'coordinator'"},
+      "constraints": [{"check": "record.starts < record.ends", "message": "A shift ends after it starts.", "fields": ["starts", "ends"]}]
+    },
+    "Signup": {
+      "description": "A volunteer signed up for a shift.",
+      "fields": {
+        "shift": {"type": "reference", "target": "Shift", "required": true},
+        "volunteer": {"type": "reference", "target": "Person", "required": true, "default": "$actor"}
+      },
+      "rules": {"read": "actor.id is not None",
+                "create": "record.volunteer == actor.id or actor.role == 'coordinator' or record.shift.team.lead == actor.id",
+                "update": "actor.role == 'coordinator' or record.shift.team.lead == actor.id",
+                "delete": "record.volunteer == actor.id or actor.role == 'coordinator' or record.shift.team.lead == actor.id"},
+      "constraints": [
+        {"check": "count(s for s in Signup if s.shift == record.shift and s.id != record.id) < record.shift.needed",
+         "message": "This shift already has all the volunteers it needs.", "fields": ["shift"]},
+        {"check": "not (record.volunteer.under_18 and record.shift.team == 'bar')",
+         "message": "Nobody under 18 may work a bar shift.", "fields": ["volunteer", "shift"]},
+        {"check": "not any(s.volunteer == record.volunteer and s.id != record.id and s.shift.date == record.shift.date and s.shift.starts < record.shift.ends and record.shift.starts < s.shift.ends for s in Signup)",
+         "message": "This volunteer is already on a shift at that time.", "fields": ["volunteer", "shift"]}
+      ]
+    }
+  },
+  "records": [
+    {"type": "Person", "id": "ana", "data": {"name": "Ana Costa", "role": "coordinator"}},
+    {"type": "Person", "id": "femi", "data": {"name": "Femi Ade", "role": "volunteer"}},
+    {"type": "Person", "id": "lucy", "data": {"name": "Lucy Ward", "role": "volunteer"}},
+    {"type": "Person", "id": "kai", "data": {"name": "Kai Moreno", "role": "volunteer"}},
+    {"type": "Person", "id": "rosa", "data": {"name": "Rosa Perez", "role": "volunteer"}},
+    {"type": "Person", "id": "ollie", "data": {"name": "Ollie Grant", "role": "volunteer", "under_18": true}},
+    {"type": "Team", "id": "stewarding", "data": {"name": "Stewarding", "lead": "femi"}},
+    {"type": "Team", "id": "bar", "data": {"name": "Bar", "lead": "lucy"}},
+    {"type": "Shift", "id": "sat-gate-am", "data": {"team": "stewarding", "place": "Main gate", "date": "2027-07-10", "starts": "09:00", "ends": "13:00", "needed": 2}},
+    {"type": "Shift", "id": "sat-bar-eve", "data": {"team": "bar", "date": "2027-07-10", "starts": "18:00", "ends": "23:00", "needed": 2}},
+    {"type": "Shift", "id": "sun-gate-am", "data": {"team": "stewarding", "place": "Main gate", "date": "2027-07-11", "starts": "09:00", "ends": "13:00", "needed": 2}},
+    {"type": "Signup", "id": "kai-sat-gate-am", "data": {"shift": "sat-gate-am", "volunteer": "kai"}},
+    {"type": "Signup", "id": "rosa-sat-gate-am", "data": {"shift": "sat-gate-am", "volunteer": "rosa"}},
+    {"type": "Signup", "id": "rosa-sat-bar-eve", "data": {"shift": "sat-bar-eve", "volunteer": "rosa"}},
+    {"type": "Signup", "id": "ollie-sun-gate-am", "data": {"shift": "sun-gate-am", "volunteer": "ollie"}}
+  ]
+}

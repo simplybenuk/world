@@ -520,8 +520,9 @@ class WorldHandler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="Run a World on this server.")
-    parser.add_argument("--world", choices=worlds.AVAILABLE, default=os.environ.get("WORLD_DEFINITION", "team"),
-                        help="World definition to serve; each needs its own data directory")
+    parser.add_argument("--world", default=os.environ.get("WORLD_DEFINITION", "team"),
+                        help=f"World definition to serve: one of {', '.join(worlds.AVAILABLE)}, or a JSON file. "
+                        "Each needs its own data directory")
     parser.add_argument("command", nargs="?", choices=["serve", "access", "issuer"], default="serve",
                         help="serve the world; access prints a token; issuer prints the key an authorization server uses "
                         "to issue agent tokens at /api/access, making it on first use")
@@ -538,7 +539,7 @@ def main():
                         help="The OAuth authorization server where MCP clients sign in for a token to this world")
     args = parser.parse_args()
     definition = worlds.load(args.world)
-    default_dir = DEFAULT_DATA_DIR if args.world == "team" else DEFAULT_DATA_DIR / args.world
+    default_dir = DEFAULT_DATA_DIR if definition.name == "team" else DEFAULT_DATA_DIR / definition.name
     data_dir = (args.data_dir or default_dir).expanduser().resolve()
     data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(data_dir, 0o700)

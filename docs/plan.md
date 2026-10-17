@@ -83,8 +83,16 @@ Done when: a handful of invited people have used it with their own agents.
 
 Done when: Ben opens it.
 
+Evidence for step 2, 2026-10-17: an agent that had never seen World wrote
+worlds for three new domains from plain-language briefs, and fresh agents did
+all 30 tasks on them. So teamworld can let a team's agent write its world. See
+[the sixth experiment](sixth-experiment.md).
+
 ## Engine work to do when use shows it matters
 
+- Date arithmetic in the rule language, such as days between two dates, so a
+  rule like "a loan lasts at most 14 days" can be written. The sixth
+  experiment's only unenforced rule needed it.
 - Confirm several writes with one wait for the disk, to raise throughput.
 - Count and search inside SQLite when the actor may read every candidate.
 - Make history and the reference index compact.

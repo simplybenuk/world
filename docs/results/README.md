@@ -76,3 +76,15 @@ The tracker agent files are as `bench.compare` judged them again with the final
 checkers. A run whose judgment changed keeps the old one in `failures_when_run`.
 The EspoCRM opencode file has no answers or bytes read, because its batch
 stopped before it saved them.
+
+## Sixth experiment: worlds written by an agent
+
+| File | What it is |
+| --- | --- |
+| `authored-clinic.json`, `authored-festival.json`, `authored-library.json` | The worlds Claude Code wrote from each brief |
+| `authored-*-attempts.json` | Each author's attempts, and why World refused any |
+| `authoring-clinic-claude.json`, `authoring-festival-claude.json`, `authoring-library-claude.json` | The ten tasks on each authored world, as judged when run |
+| `authoring-enforcement.txt` | Each refusal's forbidden write sent straight to the authored world |
+
+The task files are as judged when run. Two checks were too narrow and were widened afterwards; see the
+experiment.

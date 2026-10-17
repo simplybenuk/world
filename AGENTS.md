@@ -121,6 +121,10 @@ fits on a USB key.
   as correct on World (2026-10-16). Codex and Claude Code needed 52% and 33% of
   the calls. A weaker free model, MiMo, got 60 of 60 on World and 14 of 25 on
   EspoCRM, mostly timing out. See `docs/fifth-experiment.md`.
+- An agent that had never seen World wrote worlds for three new domains from
+  plain-language briefs, and a fresh agent did all 30 tasks on them
+  (2026-10-17). World enforced every rule but one: the rule language has no
+  date arithmetic. See `docs/sixth-experiment.md`.
 - Agent runs spend the user's model account, so ask first.
 - Report size both as the shipped artifact alone and with everything it needs
   to run.

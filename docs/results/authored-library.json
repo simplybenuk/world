@@ -1,0 +1,262 @@
+{
+  "name": "elm-street-tool-library",
+  "title": "Elm Street Tool Library",
+  "version": "1",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A member or staff member of the library.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "role": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "staff",
+            "member"
+          ],
+          "write_rule": "actor.role == 'staff'"
+        },
+        "membership_until": {
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "write_rule": "actor.role == 'staff'"
+        },
+        "inducted": {
+          "type": "boolean",
+          "default": false,
+          "write_rule": "actor.role == 'staff'"
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or record.id == actor.id",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "actor.role == 'staff'"
+      }
+    },
+    "Tool": {
+      "description": "A tool the library lends.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "power_saw": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "actor.role == 'staff'"
+      }
+    },
+    "Loan": {
+      "description": "A tool lent to a member. Staff record loans and returns. A loan should be for at most 14 days from out_on to due_on.",
+      "fields": {
+        "tool": {
+          "type": "reference",
+          "target": "Tool",
+          "required": true
+        },
+        "member": {
+          "type": "reference",
+          "target": "Person",
+          "required": true
+        },
+        "out_on": {
+          "type": "date",
+          "required": true
+        },
+        "due_on": {
+          "type": "date",
+          "required": true
+        },
+        "returned_on": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or record.member == actor.id",
+        "create": "actor.role == 'staff'",
+        "update": "actor.role == 'staff'",
+        "delete": "actor.role == 'staff'"
+      },
+      "constraints": [
+        {
+          "check": "record.due_on >= record.out_on",
+          "message": "A loan cannot be due back before it goes out.",
+          "fields": [
+            "due_on"
+          ]
+        },
+        {
+          "check": "record.returned_on is None or record.returned_on >= record.out_on",
+          "message": "A tool cannot come back before it went out.",
+          "fields": [
+            "returned_on"
+          ]
+        },
+        {
+          "check": "record.member.membership_until is not None and record.member.membership_until >= record.out_on",
+          "message": "Nobody may borrow once their membership has run out.",
+          "fields": [
+            "member",
+            "out_on"
+          ],
+          "on": [
+            "create",
+            "update"
+          ]
+        },
+        {
+          "check": "not record.tool.power_saw or record.member.inducted == True",
+          "message": "Power saws are lent only to members who have done the safety induction.",
+          "fields": [
+            "tool",
+            "member"
+          ]
+        },
+        {
+          "check": "record.returned_on is not None or not any(l.tool == record.tool and l.id != record.id and l.returned_on is None for l in Loan)",
+          "message": "That tool is already out on another loan.",
+          "fields": [
+            "tool"
+          ]
+        }
+      ]
+    },
+    "Reservation": {
+      "description": "A reservation of a tool by a member.",
+      "fields": {
+        "tool": {
+          "type": "reference",
+          "target": "Tool",
+          "required": true
+        },
+        "member": {
+          "type": "reference",
+          "target": "Person",
+          "required": true,
+          "default": "$actor",
+          "write_rule": "actor.role == 'staff'"
+        },
+        "reserved_for": {
+          "type": "date",
+          "required": true
+        }
+      },
+      "rules": {
+        "read": "actor.role == 'staff' or record.member == actor.id",
+        "create": "actor.role == 'staff' or record.member == actor.id",
+        "update": "actor.role == 'staff' or record.member == actor.id",
+        "delete": "actor.role == 'staff' or record.member == actor.id"
+      }
+    }
+  },
+  "records": [
+    {
+      "type": "Person",
+      "id": "grace",
+      "data": {
+        "name": "Grace Okoye",
+        "role": "staff",
+        "membership_until": null,
+        "inducted": false
+      }
+    },
+    {
+      "type": "Person",
+      "id": "dev",
+      "data": {
+        "name": "Dev Mehta",
+        "role": "member",
+        "membership_until": "2027-03-31",
+        "inducted": true
+      }
+    },
+    {
+      "type": "Person",
+      "id": "hana",
+      "data": {
+        "name": "Hana Sato",
+        "role": "member",
+        "membership_until": "2026-09-30",
+        "inducted": false
+      }
+    },
+    {
+      "type": "Person",
+      "id": "ian",
+      "data": {
+        "name": "Ian Ross",
+        "role": "member",
+        "membership_until": "2027-01-31",
+        "inducted": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "drill-01",
+      "data": {
+        "name": "Cordless drill",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "ladder-01",
+      "data": {
+        "name": "Extension ladder",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "saw-01",
+      "data": {
+        "name": "Circular saw",
+        "power_saw": true
+      }
+    },
+    {
+      "type": "Tool",
+      "id": "sander-01",
+      "data": {
+        "name": "Orbital sander",
+        "power_saw": false
+      }
+    },
+    {
+      "type": "Loan",
+      "id": "loan-ian-drill",
+      "data": {
+        "tool": "drill-01",
+        "member": "ian",
+        "out_on": "2026-10-10",
+        "due_on": "2026-10-24",
+        "returned_on": null
+      }
+    },
+    {
+      "type": "Loan",
+      "id": "loan-dev-sander",
+      "data": {
+        "tool": "sander-01",
+        "member": "dev",
+        "out_on": "2026-09-01",
+        "due_on": "2026-09-14",
+        "returned_on": "2026-09-12"
+      }
+    }
+  ]
+}

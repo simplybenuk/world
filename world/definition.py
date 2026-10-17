@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+import json
+from pathlib import Path
 import re
 from typing import Any
 
@@ -10,6 +12,7 @@ from .rules import RuleError, parse
 from .schema import Types
 
 OPERATIONS = ("read", "create", "update", "delete")
+FIELD_TYPES = ("text", "enum", "integer", "boolean", "date", "reference", "list")
 
 
 class Definition:
@@ -48,8 +51,14 @@ class Definition:
         for name in (*names, *(field for definition in self.types.values() for field in definition["fields"])):
             if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", name):
                 raise RuleError(f"{name!r} is not a usable type or field name. Use letters, digits, and underscores.")
+        if self.actor_type not in self.types:
+            raise RuleError(f"The people who act are {self.actor_type!r}, which is not one of the types.")
         for type_name, definition in self.types.items():
             try:
+                if not isinstance(definition.get("fields"), dict):
+                    raise RuleError("its fields must be an object of field names to field specs.")
+                for field, spec in definition["fields"].items():
+                    self._check_field(field, spec)
                 for operation in OPERATIONS:
                     parse(definition["rules"][operation], names)
                 for field in definition["fields"].values():
@@ -59,7 +68,70 @@ class Definition:
                     parse(constraint["check"], names)
                     if not set(constraint.get("on", ())) <= {"create", "update", "delete"}:
                         raise RuleError("A constraint applies on create, update, or delete.")
-            except KeyError as error:
+            except (KeyError, TypeError) as error:
                 raise RuleError(f"{type_name} is missing {error}.") from error
             except RuleError as error:
                 raise RuleError(f"{type_name}: {error}") from error
+
+    def _check_field(self, field: str, spec: Any, inside: str = "") -> None:
+        """Refuse a field the engine would not understand, naming what is wrong with it."""
+        where = f"field {inside or field}"
+        if not isinstance(spec, dict) or spec.get("type") not in FIELD_TYPES:
+            raise RuleError(f"{where} needs a type, one of {', '.join(FIELD_TYPES)}.")
+        if spec["type"] == "enum" and (not isinstance(spec.get("values"), list) or not spec["values"]
+                                       or not all(isinstance(value, str) for value in spec["values"])):
+            raise RuleError(f"{where} is an enum, so it needs values, a list of strings.")
+        if spec["type"] == "reference" and spec.get("target") not in self.types:
+            raise RuleError(f"{where} refers to {spec.get('target')!r}, which is not one of the types.")
+        if spec["type"] == "list":
+            if "items" not in spec:
+                raise RuleError(f"{where} is a list, so it needs items, the spec of each item.")
+            self._check_field(field, spec["items"], f"{field}'s items")
+
+
+class DataDefinition(Definition):
+    """A world written as JSON rather than Python: the same types and rules, with its seed records listed.
+
+        {"name": "clinic", "title": "...", "version": "1", "actor_type": "Person",
+         "types": {...}, "records": [{"type": "Person", "id": "okafor", "data": {...}}, ...]}
+
+    Every record of the actor type is a person who can be given access. A record comes after the
+    records it refers to.
+    """
+
+    def __init__(self, data: Any) -> None:
+        if not isinstance(data, dict):
+            raise RuleError("A world is a JSON object with name, title, version, types, and records.")
+        missing = [key for key in ("name", "title", "types") if key not in data]
+        if missing:
+            raise RuleError(f"The world is missing {', '.join(missing)}.")
+        unknown = set(data) - {"name", "title", "version", "actor_type", "types", "records", "seed_reason"}
+        if unknown:
+            raise RuleError(f"The world has keys the engine does not know: {', '.join(sorted(unknown))}.")
+        if not isinstance(data["name"], str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", data["name"]):
+            raise RuleError("name is a short identifier in lower case, such as clinic.")
+        if not isinstance(data["types"], dict) or not data["types"]:
+            raise RuleError("types is an object of type names to type definitions.")
+        records = data.get("records", [])
+        if not isinstance(records, list) or not all(
+                isinstance(record, dict) and set(record) == {"type", "id", "data"} and isinstance(record["data"], dict)
+                for record in records):
+            raise RuleError('records is a list of {"type": TYPE, "id": ID, "data": {FIELD: VALUE}}.')
+        self.name, self.title, self.version = data["name"], str(data["title"]), str(data.get("version", "1"))
+        self.types = data["types"]
+        self.actor_type = data.get("actor_type", "Person")
+        self.seed_reason = data.get("seed_reason", self.seed_reason)
+        self.records = records
+        self.actors = tuple(record["id"] for record in records if record["type"] == self.actor_type)
+
+    def seed(self, today: date) -> list[tuple[str, str, dict[str, Any]]]:
+        return [(record["type"], record["id"], record["data"]) for record in self.records]
+
+
+def load_json(path: str | Path) -> DataDefinition:
+    try:
+        data = json.loads(Path(path).read_text())
+    except json.JSONDecodeError as error:
+        raise RuleError(f"The world is not valid JSON: {error}.") from None
+    return DataDefinition(data)
+
