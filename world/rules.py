@@ -10,7 +10,8 @@ Names: `actor` is who is acting, `record` is the record being judged, and `saved
 is its stored state (None while it is being created). A reference field is
 followed with a dot. A missing value anywhere in a path gives None. Functions:
 `changed('field')`, `can_read(record)`, `count(...)`, and `any(...)` over a
-generator of another type's live records.
+generator of another type's live records, `days(a, b)` for the whole days from
+date a to date b, and `today()` for the date when the rule is judged.
 
 Nothing here executes Python. The expression is parsed into a syntax tree, the
 tree is checked against the forms below when the definition loads, and this
@@ -20,6 +21,7 @@ module walks it.
 from __future__ import annotations
 
 import ast
+from datetime import date, datetime, timezone
 from functools import lru_cache
 from typing import Any, Callable
 
@@ -37,7 +39,7 @@ class _Unknown:
 
 UNKNOWN = _Unknown()
 _COMPARISONS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn, ast.Is, ast.IsNot, ast.Lt, ast.LtE, ast.Gt, ast.GtE)
-_FUNCTIONS = ("changed", "can_read", "count", "any")
+_FUNCTIONS = {"changed": 1, "can_read": 1, "count": 1, "any": 1, "days": 2, "today": 0}  # name: how many arguments
 
 
 class Node:
@@ -133,8 +135,13 @@ def _check(node: ast.AST, source: str, types: set[str], names: set[str]) -> None
         for value in node.elts:
             _check(value, source, types, names)
     elif isinstance(node, ast.Call):
-        if not isinstance(node.func, ast.Name) or node.func.id not in _FUNCTIONS or node.keywords or len(node.args) != 1:
+        if not isinstance(node.func, ast.Name) or node.func.id not in _FUNCTIONS or node.keywords \
+                or len(node.args) != _FUNCTIONS[node.func.id] or any(isinstance(argument, ast.Starred) for argument in node.args):
             bad("This call")
+        if node.func.id in ("days", "today"):
+            for argument in node.args:
+                _check(argument, source, types, names)
+            return
         argument = node.args[0]
         if node.func.id == "changed":
             if not isinstance(argument, ast.Constant) or not isinstance(argument.value, str):
@@ -273,7 +280,16 @@ class Evaluation:
         return left >= right
 
     def _call(self, node: ast.Call, names: dict[str, Any]) -> Any:
-        name, argument = node.func.id, node.args[0]
+        name = node.func.id
+        if name == "today":
+            return datetime.now(timezone.utc).date().isoformat()
+        if name == "days":
+            start, end = (self._value(argument, names) for argument in node.args)
+            if start is UNKNOWN or end is UNKNOWN:
+                return UNKNOWN
+            start, end = _date(start), _date(end)
+            return None if start is None or end is None else (end - start).days
+        argument = node.args[0]
         if name == "changed":
             record, saved = names["record"], names["saved"]
             if record is UNKNOWN or saved is UNKNOWN:
@@ -301,6 +317,16 @@ class Evaluation:
         if name == "count":
             return UNKNOWN if unknown else total
         return True if total else (UNKNOWN if unknown else False)
+
+
+def _date(value: Any) -> date | None:
+    """A date field's value, or the date part of a timestamp; None for anything else."""
+    if not isinstance(value, str) or len(value) < 10:
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None
 
 
 def _mentions(node: ast.AST, variable: str) -> bool:

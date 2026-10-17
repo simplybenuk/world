@@ -159,9 +159,17 @@ tree and walks the tree. It never runs it as Python.
 | `can_read(record.project)` | the actor may read that record |
 | `any(d.state == 'open' for d in Deviation if d.instrument == record.id)` | some live record of that type matches |
 | `count(p for p in Person if p.role == 'admin')` | how many live records of that type match |
+| `days(record.out, record.due)` | the whole days from the first date to the second, negative if the second is earlier. `None` if either is missing |
+| `today()` | today's date in UTC, as `YYYY-MM-DD`, when the rule is judged |
 
-Arithmetic, function definitions, other function calls, and names other than
-those above are refused when the world loads.
+A loan of at most 14 days is `days(record.out, record.due) <= 14`. Because a
+missing date gives `None`, and ordering against `None` is false, write
+`record.due is None or days(record.out, record.due) <= 14` when the date is
+optional. A rule with `today()` is judged when a change is made. The engine
+does not re-judge saved records as days pass.
+
+Other arithmetic, function definitions, other function calls, and names other
+than those above are refused when the world loads.
 
 ## The same language in queries
 
@@ -185,8 +193,7 @@ You do not write these. The engine works them out from the rules for each actor.
 
 - A Python definition can seed dates relative to today. A JSON world's records
   are fixed.
-- There is no arithmetic, so a rule cannot say "at most 14 days after it went
-  out" or add up amounts.
+- Apart from `days()`, there is no arithmetic, so a rule cannot add up amounts.
 - There are no decimal numbers. Store 31.5 kg as 315 tenths of a kilogram.
 - A rule that refuses a request returns the rule's text, not which part of it
   failed.
