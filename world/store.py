@@ -1104,19 +1104,20 @@ class WorldStore:
             if record_id is not None:
                 self._get_authorized(connection, actor, type_name, record_id, include_deleted=True)
             entries = [
-                (row["id"], 0, 0, row["at"], who(row), verbs[row["action"]], row["type"], row["record_id"], self._happened(row))
+                (row["id"], 0, "", 0, 0, row["at"], who(row), verbs[row["action"]], row["type"], row["record_id"], self._happened(row))
                 for row in connection.execute(f"SELECT * FROM events{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ] + [
-                (row["after_event"], 1, row["id"], row["at"], who(row), "viewed", row["type"], row["record_id"], row["how"].capitalize() + ".")
+                (row["after_event"], 1, row["at"], 0, row["id"], row["at"], who(row), "viewed", row["type"], row["record_id"], row["how"].capitalize() + ".")
                 for row in connection.execute(f"SELECT * FROM views{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ] + [
-                (row["after_event"], 2, row["id"], row["at"], who(row), f"{row['action']} access", row["type"], row["record_id"], row["detail"])
+                (row["after_event"], 1, row["at"], 1, row["id"], row["at"], who(row), f"{row['action']} access", row["type"], row["record_id"], row["detail"])
                 for row in connection.execute(f"SELECT * FROM access{where} ORDER BY id DESC LIMIT ?", (*params, limit))
             ]
             readable: dict[tuple[str, str], bool] = {}
             lines = []
-            # Writers run one at a time, so event order and each view's place in it are exact.
-            for _, _, _, at, who, verb, kind, identifier, detail in sorted(entries)[-limit:]:
+            # Writers run one at a time, so event order and each view's place in it are exact. Views and access
+            # lines between the same two events go in the order they were written.
+            for *_, at, who, verb, kind, identifier, detail in sorted(entries)[-limit:]:
                 key = (kind, identifier)
                 if key not in readable:
                     record = self._raw(connection, kind, identifier, include_deleted=True)

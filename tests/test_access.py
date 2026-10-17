@@ -123,6 +123,91 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(status, 422)
         self.assertFalse(self.access.has_grant("maya", "claude-ai"))
 
+    def access_lines(self, actor="maya"):
+        status, lines, _ = self.request("GET", f"/api/audit/Person/{actor}", token=self.access.tokens[actor])
+        return [line for line in lines.splitlines() if " access " in line]
+
+    def test_access_outlasts_its_tokens(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        body = {"actor": "maya", "agent": "claude-ai", "expires_in": 3600, "via": "teamworld"}
+        status, first, _ = self.request("POST", "/api/access", body, key)
+        later = time.time() + 2 * 86400  # every token has expired over the weekend
+        with mock.patch("world.server.time.time", return_value=later):
+            status, listed, _ = self.request("GET", "/api/access?actor=maya", token=key)
+            self.assertEqual([(grant["agent"], grant["tokens"]) for grant in listed["grants"]], [("claude-ai", 0)])
+            status, renewed, _ = self.request("POST", "/api/access", {**body, "renew": True}, key)
+            self.assertEqual(status, 201)
+            self.assertEqual(self.access.identify(renewed["access_token"]), ("maya", "claude-ai"))
+            self.assertEqual(self.access.identify(first["access_token"]), (None, None))
+        self.assertEqual(len(self.access_lines()), 1)  # renewing on Monday is not access given on Monday
+
+    def test_renewing_cannot_give_back_revoked_access(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        body = {"actor": "maya", "agent": "claude-ai", "expires_in": 3600, "via": "teamworld"}
+        status, _, _ = self.request("POST", "/api/access", {**body, "renew": True}, key)
+        self.assertEqual(status, 409)  # never given
+        self.request("POST", "/api/access", body, key)
+        self.request("DELETE", "/api/access", {"actor": "maya", "agent": "claude-ai", "via": "teamworld"}, key)
+        status, refused, _ = self.request("POST", "/api/access", {**body, "renew": True}, key)
+        self.assertEqual((status, refused["error"]["code"]), (409, "no_access"))
+        self.assertEqual(len(self.access_lines()), 2)  # gave and revoked, and nothing for the refused renewals
+
+    def test_revoking_access_with_no_working_token_is_in_the_audit(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        self.request("POST", "/api/access", {"actor": "maya", "agent": "claude-ai", "expires_in": 60}, key)
+        with mock.patch("world.server.time.time", return_value=time.time() + 120):
+            status, revoked, _ = self.request("DELETE", "/api/access", {"actor": "maya", "agent": "claude-ai"}, key)
+        self.assertEqual((revoked["revoked"], revoked["ended"]), (0, 1))
+        self.assertRegex(self.access_lines()[-1], r"revoked access +Person maya +claude-ai may no longer act as maya\.$")
+
+    def test_stopping_one_token_leaves_the_access(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        body = {"actor": "maya", "agent": "claude-ai", "expires_in": 3600}
+        first = self.request("POST", "/api/access", body, key)[1]["access_token"]
+        second = self.request("POST", "/api/access", body, key)[1]["access_token"]
+        status, revoked, _ = self.request("DELETE", "/api/access", {"token": first}, key)
+        self.assertEqual((revoked["revoked"], revoked["ended"]), (1, 0))
+        self.assertEqual(self.access.identify(first), (None, None))
+        self.assertEqual(self.access.identify(second), ("maya", "claude-ai"))
+        self.assertTrue(self.access.has_grant("maya", "claude-ai"))
+        self.assertEqual(len(self.access_lines()), 1)
+
+    def test_access_is_only_for_someone_in_the_world_whoever_gives_it(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        status, body, _ = self.request("POST", "/api/access", {"actor": "nobody", "agent": "claude", "by": "maya"}, key)
+        self.assertEqual((status, body["error"]["code"]), (422, "unknown_actor"))
+        self.assertFalse(self.access.has_grant("nobody", "claude"))
+
+    def test_the_audit_keeps_access_and_views_in_the_order_they_happened(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        token = self.request("POST", "/api/access", {"actor": "maya", "agent": "claude-ai", "expires_in": 3600}, key)[1]["access_token"]
+        time.sleep(0.002)
+        self.request("GET", "/api/records/Person/maya", token=token)
+        lines = self.request("GET", "/api/audit/Person/maya", token=self.access.tokens["maya"])[1].splitlines()
+        gave = next(index for index, line in enumerate(lines) if "gave access" in line)
+        viewed = next(index for index, line in enumerate(lines) if "maya via claude-ai  viewed" in line)
+        self.assertLess(gave, viewed, lines)
+
+    def test_tokens_saved_before_grants_still_work(self):
+        self.start()
+        token, expired = "t" * 43, "e" * 43
+        (self.data_dir / "agent-access.json").write_text(json.dumps({
+            token: ["maya", "claude-ai", round(time.time() + 3600)], expired: ["ben", "codex", round(time.time() - 10)]}))
+        access = AccessTokens(self.data_dir)
+        self.assertEqual(access.identify(token), ("maya", "claude-ai"))
+        self.assertTrue(access.has_grant("maya", "claude-ai"))
+        self.assertFalse(access.has_grant("ben", "codex"))  # it had lapsed under the old rule
+        access.issue("maya", "claude-ai", 3600)
+        saved = json.loads((self.data_dir / "agent-access.json").read_text())
+        self.assertEqual(saved["grants"], [["maya", "claude-ai", None]])
+        self.assertIn(token, saved["tokens"])
+
     def test_access_given_at_the_command_line_is_in_the_audit(self):
         self.start()
         command = [sys.executable, "-m", "world.server", "access", "--data-dir", str(self.data_dir), "--actor", "ben", "--agent", "codex"]
