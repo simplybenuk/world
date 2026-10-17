@@ -185,8 +185,14 @@ python3 -m world.server --public-url https://world.example --authorization-serve
 With both set, `/.well-known/oauth-protected-resource/mcp` tells a connector
 where to sign in. The authorization server uses its key at `/api/access`:
 `POST {"actor", "agent", "expires_in"}` issues a token, `GET ?actor=` lists who
-has given which agents access, and `DELETE {"actor", "agent"}` or
-`DELETE {"token"}` revokes. A token is valid only for the world that issued it.
+has given which agents access, and `DELETE {"actor", "agent"}` revokes. A token
+is valid only for the world that issued it.
+
+Access lasts until it is revoked, and its tokens come and go under it. The
+first token gives access. Later ones renew it, however long after the last one
+expired, and add nothing to the audit. Renewing with `"renew": true` refuses
+with 409 when the access was revoked, so a refresh cannot give it back.
+`DELETE {"token"}` stops one token and leaves the access.
 Giving and revoking access are audit lines on the record of the person the
 agent acts for. They name who did it with `"by"` (the person, unless said
 otherwise) and the software they used with `"via"`:
