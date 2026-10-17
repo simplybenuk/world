@@ -1,0 +1,16 @@
+[
+  {
+    "attempt": 1,
+    "seconds": 22.1,
+    "timed_out": false,
+    "error": "The answer is not valid JSON: Expecting value: line 1 column 235 (char 234).",
+    "answer_bytes": 4804
+  },
+  {
+    "attempt": 2,
+    "seconds": 14.5,
+    "timed_out": false,
+    "error": null,
+    "answer_bytes": 4804
+  }
+]

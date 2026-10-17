@@ -48,7 +48,7 @@ TASKS = [
     Task("sign-up", "kai", "Sign me up for the Sunday morning gate shift.", changes=[change("kai", "sun-gate-am")]),
     Task("lead-signs-up", "lucy", "Sign Kai up for the Saturday evening bar shift.", changes=[change("kai", "sat-bar-eve")]),
     Task("new-shift", "ana", "Add a new stewarding shift on Sunday 11 July 2027 from 14:00 to 18:00 that needs 2 volunteers.",
-         changes=[change("stewarding", "2027-07-11", "14", "18", actions=("create",))]),
+         changes=[change("stewarding", "2027-07-11", ("14", 840), ("18", 1080), actions=("create",))]),
     Task("leave", "rosa", "Take me off the Saturday morning gate shift.",
          changes=[[change("rosa", "sat-gate-am", actions=("delete",)),
                    change("rosa", "sat-gate-am", ("cancel", "withdr", "remov", "dropped"), actions=("update",))]]),

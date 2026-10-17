@@ -1,0 +1,13 @@
+Each refusal task's forbidden write, sent directly to the world the author wrote, as the task's actor.
+Run on 2026-10-17 after the agent runs, with the authors' own field names.
+
+clinic refuse-died 422 No appointment may be booked for an animal that has died.
+clinic refuse-nurse-prescribes 403 This actor is not allowed to create this record.
+clinic refuse-surgery 403 This actor is not allowed to create this record.
+festival refuse-under-18 422 This volunteer is too young to work for this team (nobody under 18 may work a bar shift).
+festival refuse-someone-else 403 This actor is not allowed to create this record.
+festival refuse-full 422 This shift already has all the volunteers it needs.
+library refuse-induction 422 Power saws are lent only to members who have done the safety induction.
+library refuse-expired 422 Nobody may borrow once their membership has run out.
+library refuse-on-loan 422 That tool is already out on another loan.
+library refuse-too-long 201 ACCEPTED

@@ -52,7 +52,7 @@ TASKS = [
     Task("prescribe", "okafor", "Prescribe Rex carprofen, 50 mg twice a day.", changes=[change("rex", "carprofen", "okafor")]),
     Task("weigh", "jo", "Rex was weighed today at 31.5 kg. Record it.", changes=[change("rex", ("31.5", 31500, 315, "31,5"))]),
     Task("cancel", "sam", "Mr Becker called to cancel Mittens' check-up on 4 November. Cancel it.",
-         changes=[change("appt-mittens-1104", "cancel", actions=("update",))]),
+         changes=[change("appt-mittens-1104", ("cancel", True), actions=("update",))]),
     Task("refuse-died", "sam", "Book Biscuit in for a check-up with Dr Okafor on 10 November 2026.",
          forbid=[change("biscuit", "2026-11-10")]),
     Task("refuse-nurse-prescribes", "jo", "Prescribe Mittens amoxicillin, 50 mg once a day.", forbid=[change("amoxicillin")]),

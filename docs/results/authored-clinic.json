@@ -1,0 +1,330 @@
+{
+  "name": "clinic",
+  "title": "Harbourside Vets",
+  "version": "1",
+  "actor_type": "Person",
+  "types": {
+    "Person": {
+      "description": "A member of staff at the clinic.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "role": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "vet",
+            "receptionist",
+            "nurse"
+          ]
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "False",
+        "update": "False",
+        "delete": "False"
+      },
+      "constraints": []
+    },
+    "Owner": {
+      "description": "The owner of one or more animals. Owners do not use the system.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "phone": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role in ('receptionist', 'vet')",
+        "update": "actor.role in ('receptionist', 'vet')",
+        "delete": "False"
+      },
+      "constraints": []
+    },
+    "Animal": {
+      "description": "An animal treated at the clinic.",
+      "fields": {
+        "name": {
+          "type": "text",
+          "required": true
+        },
+        "species": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "dog",
+            "cat",
+            "rabbit"
+          ]
+        },
+        "born_on": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        },
+        "owner": {
+          "type": "reference",
+          "target": "Owner",
+          "required": true
+        },
+        "died_on": {
+          "type": "date",
+          "nullable": true,
+          "default": null
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role in ('receptionist', 'vet')",
+        "update": "actor.role in ('receptionist', 'vet')",
+        "delete": "False"
+      },
+      "constraints": []
+    },
+    "Appointment": {
+      "description": "A booked appointment for one animal with one vet. Cancelled, never deleted.",
+      "fields": {
+        "animal": {
+          "type": "reference",
+          "target": "Animal",
+          "required": true
+        },
+        "vet": {
+          "type": "reference",
+          "target": "Person",
+          "required": true
+        },
+        "date": {
+          "type": "date",
+          "required": true
+        },
+        "kind": {
+          "type": "enum",
+          "required": true,
+          "values": [
+            "vaccination",
+            "check-up",
+            "surgery"
+          ]
+        },
+        "cancelled": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role in ('receptionist', 'vet') and (record.kind != 'surgery' or actor.role == 'vet')",
+        "update": "actor.role in ('receptionist', 'vet') and (record.kind != 'surgery' or actor.role == 'vet')",
+        "delete": "False"
+      },
+      "constraints": [
+        {
+          "check": "record.vet.role == 'vet'",
+          "message": "An appointment must be with a vet.",
+          "fields": [
+            "vet"
+          ]
+        },
+        {
+          "check": "not changed('animal') or record.animal.died_on is None",
+          "message": "No appointment may be booked for an animal that has died.",
+          "fields": [
+            "animal"
+          ]
+        }
+      ]
+    },
+    "Prescription": {
+      "description": "A medicine prescribed by a vet for an animal.",
+      "fields": {
+        "animal": {
+          "type": "reference",
+          "target": "Animal",
+          "required": true
+        },
+        "medicine": {
+          "type": "text",
+          "required": true,
+          "min_length": 1
+        },
+        "dose": {
+          "type": "text",
+          "required": true,
+          "min_length": 1
+        },
+        "prescribed_by": {
+          "type": "reference",
+          "target": "Person",
+          "required": true,
+          "default": "$actor"
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role == 'vet' and record.prescribed_by == actor.id",
+        "update": "actor.role == 'vet' and record.prescribed_by == actor.id",
+        "delete": "False"
+      },
+      "constraints": [
+        {
+          "check": "record.prescribed_by.role == 'vet'",
+          "message": "Only a vet may prescribe.",
+          "fields": [
+            "prescribed_by"
+          ]
+        }
+      ]
+    },
+    "Weight": {
+      "description": "An animal's weight on a date, in tenths of a kilogram (315 means 31.5 kg).",
+      "fields": {
+        "animal": {
+          "type": "reference",
+          "target": "Animal",
+          "required": true
+        },
+        "weight_tenths_kg": {
+          "type": "integer",
+          "required": true,
+          "min": 1
+        },
+        "taken_on": {
+          "type": "date",
+          "required": true
+        }
+      },
+      "rules": {
+        "read": "actor.id is not None",
+        "create": "actor.role in ('nurse', 'vet')",
+        "update": "actor.role in ('nurse', 'vet')",
+        "delete": "False"
+      },
+      "constraints": []
+    }
+  },
+  "records": [
+    {
+      "type": "Person",
+      "id": "okafor",
+      "data": {
+        "name": "Dr Amara Okafor",
+        "role": "vet"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "lind",
+      "data": {
+        "name": "Dr Erik Lind",
+        "role": "vet"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "sam",
+      "data": {
+        "name": "Sam Patel",
+        "role": "receptionist"
+      }
+    },
+    {
+      "type": "Person",
+      "id": "jo",
+      "data": {
+        "name": "Jo Reyes",
+        "role": "nurse"
+      }
+    },
+    {
+      "type": "Owner",
+      "id": "shah",
+      "data": {
+        "name": "Priya Shah",
+        "phone": "07700 900123"
+      }
+    },
+    {
+      "type": "Owner",
+      "id": "becker",
+      "data": {
+        "name": "Tom Becker",
+        "phone": "07700 900456"
+      }
+    },
+    {
+      "type": "Animal",
+      "id": "rex",
+      "data": {
+        "name": "Rex",
+        "species": "dog",
+        "born_on": "2019-04-02",
+        "owner": "shah",
+        "died_on": null
+      }
+    },
+    {
+      "type": "Animal",
+      "id": "mittens",
+      "data": {
+        "name": "Mittens",
+        "species": "cat",
+        "born_on": "2021-06-15",
+        "owner": "becker",
+        "died_on": null
+      }
+    },
+    {
+      "type": "Animal",
+      "id": "biscuit",
+      "data": {
+        "name": "Biscuit",
+        "species": "rabbit",
+        "born_on": null,
+        "owner": "shah",
+        "died_on": "2026-08-20"
+      }
+    },
+    {
+      "type": "Appointment",
+      "id": "appt-rex-1103",
+      "data": {
+        "animal": "rex",
+        "vet": "okafor",
+        "date": "2026-11-03",
+        "kind": "vaccination",
+        "cancelled": false
+      }
+    },
+    {
+      "type": "Appointment",
+      "id": "appt-mittens-1104",
+      "data": {
+        "animal": "mittens",
+        "vet": "lind",
+        "date": "2026-11-04",
+        "kind": "check-up",
+        "cancelled": false
+      }
+    },
+    {
+      "type": "Appointment",
+      "id": "appt-rex-1104",
+      "data": {
+        "animal": "rex",
+        "vet": "lind",
+        "date": "2026-11-04",
+        "kind": "check-up",
+        "cancelled": false
+      }
+    }
+  ]
+}

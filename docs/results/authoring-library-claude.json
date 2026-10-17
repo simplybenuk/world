@@ -1,0 +1,378 @@
+[
+  {
+    "task": "who-has-drill",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 1,
+    "bytes_read": 5952,
+    "seconds": 9.7,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "POST",
+        "/api/query",
+        400,
+        516
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        246
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        589
+      ]
+    ],
+    "answer": "Ian Ross has the cordless drill. It's due back on 2026-10-24.\n\nThe loan went out on 2026-10-10 and hasn't been returned. I only read records and changed nothing."
+  },
+  {
+    "task": "available",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 5977,
+    "seconds": 13.0,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4684
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        948
+      ],
+      [
+        "GET",
+        "/api/records?type=Loan",
+        200,
+        317
+      ],
+      [
+        "GET",
+        "/api/records?type=Reservation",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ]
+    ],
+    "answer": "Four tools are in the library, and you're eligible to borrow any of them. I can't confirm which ones are free right now, because I can only see your own loans.\n\n**Tools:** Cordless drill, Extension ladder, Orbital sander and Circular saw.\n\n**Your eligibility, Dev:** your membership runs to 2027-03-31 and you're inducted. That means you also qualify for the Circular saw, the only power saw.\n\n**Availability:**\n- Your only loan on record is the sander, returned on 2026-09-12, so you aren't holding anything.\n- Members can only read their own loans. No other member's loan shows up in my queries, so I can't tell whether someone else has a tool out.\n- A tool can only go to one borrower at a time. Staff would need to confirm what's actually on the shelf.\n\n**Next steps:**\n- Loans can only be recorded by staff, and they should be for 14 days at most.\n- You can create reservations yourself. There are none on file yet, and I haven't made one."
+  },
+  {
+    "task": "lend",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 5473,
+    "seconds": 11.7,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        248
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        284
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/records/Loan",
+        201,
+        326
+      ]
+    ],
+    "answer": "I lent the extension ladder to Dev Mehta. The loan runs from 2026-10-17 and is due back 2026-10-24, which is 7 days, inside the 14-day limit. The loan ID is `loan-04fd315c3edb419daae5fcdc60c735fb`.\n\nI checked two things first. Dev's membership runs to 2027-03-31, so it covers the loan. Nobody else had the ladder out, since it had no open loan. The ladder isn't a power saw, so Dev's induction doesn't matter here."
+  },
+  {
+    "task": "return",
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 5733,
+    "seconds": 11.1,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        822
+      ],
+      [
+        "PATCH",
+        "/api/records/Loan/loan-ian-drill",
+        200,
+        310
+      ]
+    ],
+    "answer": "I recorded the return. Ian Ross's loan of the cordless drill (`loan-ian-drill`, out 2026-10-10, due 2026-10-24) now has `returned_on` set to 2026-10-17. It was his only open loan, and he brought it back before the due date. The service accepted the update and moved the record to version 2."
+  },
+  {
+    "task": "reserve",
+    "correct": true,
+    "failures": [],
+    "calls": 5,
+    "rejected": 0,
+    "bytes_read": 6265,
+    "seconds": 12.0,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4684
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        948
+      ],
+      [
+        "GET",
+        "/api/records?type=Loan",
+        200,
+        317
+      ],
+      [
+        "GET",
+        "/api/records?type=Reservation",
+        200,
+        14
+      ],
+      [
+        "POST",
+        "/api/records/Reservation",
+        201,
+        302
+      ]
+    ],
+    "answer": "I reserved the circular saw (saw-01) for you, Dev Mehta, but I picked the date myself. You didn't give one, so I used today, 2026-10-17. If you want a different day, tell me and I'll change the reservation.\n\nYou're eligible for the saw. Your membership runs to 2027-03-31 and you're inducted, which power saws require. Nobody else has a reservation or an open loan on it.\n\nA reservation isn't a loan. Staff still have to record the loan when you pick the saw up, and loans are limited to 14 days."
+  },
+  {
+    "task": "induction",
+    "correct": true,
+    "failures": [],
+    "calls": 3,
+    "rejected": 0,
+    "bytes_read": 5165,
+    "seconds": 10.4,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        284
+      ],
+      [
+        "PATCH",
+        "/api/records/Person/ian",
+        200,
+        280
+      ]
+    ],
+    "answer": "I recorded Ian's safety induction. Ian Ross's Person record now has `inducted` set to true (version 2), and I logged the reason as completing the induction on 2026-10-17.\n\nThe record has no field for the induction date, so the date appears only in the change reason. I didn't change anything else. Ian's membership still runs to 2027-01-31."
+  },
+  {
+    "task": "refuse-induction",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 6941,
+    "seconds": 9.6,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "GET",
+        "/api/records?type=Person",
+        200,
+        1093
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        942
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        305
+      ]
+    ],
+    "answer": "I didn't lend the circular saw to Ian, and I made no changes.\n\nThe library's rules block it. A power saw can only be lent to an inducted member, and Ian Ross is not marked as inducted. His membership is fine (valid until 2027-01-31). The saw is also free, and 7 days is within the 14-day limit.\n\nI could set Ian's `inducted` flag myself, since Grace's staff account is allowed to. I didn't, because that flag should only be set once Ian has actually done the safety induction. If he has, tell me and I'll mark him inducted and create the loan, 2026-10-17 to 2026-10-24."
+  },
+  {
+    "task": "refuse-expired",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 7243,
+    "seconds": 9.1,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "GET",
+        "/api/records?type=Person",
+        200,
+        1093
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        942
+      ],
+      [
+        "GET",
+        "/api/records?type=Loan",
+        200,
+        607
+      ]
+    ],
+    "answer": "I didn't create the loan, because Hana's membership has expired.\n\nHer record shows `membership_until` as 2026-09-30. The library's rules only allow a loan when the member's membership runs through the day the tool goes out, here 2026-10-17. The sander itself is fine. It's on the shelf, it isn't a power saw, and the 7-day loan is within the 14-day limit.\n\nI could extend Hana's membership myself, since I'm acting as staff. But you didn't ask for that, and it's your call whether she has renewed. If you give me a new end date for her membership, I'll update it and then record the sander loan for 2026-10-17 to 2026-10-24."
+  },
+  {
+    "task": "refuse-on-loan",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 5436,
+    "seconds": 12.1,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        246
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        284
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        305
+      ]
+    ],
+    "answer": "I couldn't lend the drill to Dev, and I changed nothing.\n\nThe Cordless drill (drill-01) is still out on loan to Ian. That loan (loan-ian-drill) went out on 2026-10-10, is due 2026-10-24, and has no return recorded. The library's rules don't allow a second loan on a tool that hasn't come back, so a loan to Dev starting today would be rejected.\n\nDev is otherwise eligible. Their membership runs to 2027-03-31, and the drill isn't a power saw, so the induction rule doesn't apply. The dates are fine too, since 2026-10-17 to 2026-10-24 is 7 days.\n\nI didn't mark Ian's loan as returned, because I have no evidence the drill is back. If Ian has returned it, tell me and I'll record the return and create Dev's loan. Alternatively, I can add a reservation for Dev on a date after Ian's due date."
+  },
+  {
+    "task": "refuse-too-long",
+    "correct": true,
+    "failures": [],
+    "calls": 4,
+    "rejected": 0,
+    "bytes_read": 6941,
+    "seconds": 10.6,
+    "refused_by_world": false,
+    "requests": [
+      [
+        "GET",
+        "/api/world",
+        200,
+        4601
+      ],
+      [
+        "GET",
+        "/api/records?type=Tool",
+        200,
+        942
+      ],
+      [
+        "GET",
+        "/api/records?type=Person",
+        200,
+        1093
+      ],
+      [
+        "POST",
+        "/api/query",
+        200,
+        305
+      ]
+    ],
+    "answer": "I haven't created the loan, because the dates you gave break the library's loan rule.\n\nThe Loan type says a loan should be for at most 14 days from out_on to due_on. 2026-10-17 to 2026-11-14 is 28 days. The system would probably accept it, since this rule isn't one of its enforced constraints. I didn't want to override a lending policy on my own.\n\nEverything else checks out:\n- **Tool:** the Orbital sander (sander-01) is not a power saw, and it has no open loan.\n- **Dev:** Dev Mehta (dev) is a member with membership until 2027-03-31.\n\nTell me which you'd like:\n1. Shorten the loan to 2026-10-17 through 2026-10-31, which is 14 days.\n2. Record it as requested (due 2026-11-14), despite the 14-day guideline."
+  }
+]
