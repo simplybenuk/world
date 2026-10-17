@@ -117,6 +117,26 @@ stored as whole numbers.
 - The reference the authors read was written by me, and in one place it
   suggested the answer.
 
+## The library again, with Codex and days()
+
+After `days(a, b)` and `today()` were added to the rule language, Codex wrote the
+library world from the same brief and the updated reference, and did its ten
+tasks.
+
+- **Written in one attempt, in 32 s.** The 14-day limit is now a constraint,
+  `days(record.out, record.due) >= 0 and days(record.out, record.due) <= 14`.
+  The author also used `today()` to refuse a loan once a membership has run out.
+- **10 of 10 tasks correct.** As run, the check marked the 28-day refusal wrong,
+  because the answer wrote "couldn’t" with a typographic apostrophe. The check
+  now reads both apostrophes.
+- **World refused all four forbidden loans itself**, including the 28-day one.
+- **It limited the checks that only matter when lending to creates**, with
+  `"on": ["create"]`, so a tool can still be returned after its borrower's
+  membership has run out.
+
+So a second model, from another family, wrote a world that enforced every rule
+in the brief, once the language could express them all.
+
 ## Next
 
 - Add date arithmetic, and perhaps decimals, to the rule language, so that a
