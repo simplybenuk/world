@@ -18,12 +18,14 @@ class RuleLanguageTest(unittest.TestCase):
             "count(p for p in Person if p.role == 'admin') > 1",
             "changed('status') and saved.status not in ('done', 'todo')",
             "can_read(record.project)",
+            "days(record.due, today()) <= 14",
         ):
             parse(accepted, types)
         for refused in (
             "__import__('os').system('true')", "open('/etc/passwd')", "record.owner.__class__", "(lambda: 1)()",
             "actor.role == 'admin' if True else False", "record.amount + 1 > 2", "[p for p in Person]", "any(p for p in Secret)",
             "getattr(actor, 'role')", "changed(record.status)", "f'{actor.role}'", "unknown_name == 1", "1.5 > 1", "",
+            "days(record.due)", "today(1)", "days(*record.due)", "days(record.due, today=1)", "days(record.due, open('x'))",
         ):
             with self.subTest(refused), self.assertRaises((RuleError, AttributeError)):
                 tree = parse(refused, types)
@@ -54,6 +56,24 @@ class RuleLanguageTest(unittest.TestCase):
             self.assertIs(Evaluation(world, priya, UNKNOWN, UNKNOWN).run(create), UNKNOWN)
             self.assertTrue(possible(world, priya, create))
             self.assertFalse(possible(world, nina, create))
+
+    def test_days_counts_whole_days_and_today_is_the_date_now(self):
+        store = WorldStore(":memory:")
+        self.addCleanup(store.close)
+        with store._transaction() as connection:
+            world = store._rules(connection)
+            ben = world.node(store._raw(connection, "Person", "ben"))
+            run = lambda expression, record=None: Evaluation(world, ben, record, None).run(expression)
+            self.assertEqual(run("days('2026-10-17', '2026-10-31')"), 14)
+            self.assertEqual(run("days('2026-10-31', '2026-10-17')"), -14)
+            self.assertEqual(run("days('2024-02-28', '2024-03-01')"), 2)  # a leap year
+            self.assertEqual(run("days('2026-10-17T23:59:00.000Z', '2026-10-18')"), 1)  # a timestamp's date
+            self.assertIsNone(run("days(None, '2026-10-18')"))
+            self.assertIsNone(run("days('soon', '2026-10-18')"))
+            self.assertFalse(run("days(None, '2026-10-18') <= 14"))  # ordering against None is false
+            self.assertEqual(run("days(today(), today())"), 0)
+            self.assertIs(Evaluation(world, ben, UNKNOWN, UNKNOWN).run("days(record.due, today()) > 0"), UNKNOWN)
+            self.assertTrue(possible(world, ben, "days(record.due, today()) > 0"))
 
     def test_a_definition_with_a_bad_rule_fails_when_it_loads(self):
         class Broken(Definition):

@@ -120,7 +120,9 @@ stored as whole numbers.
 ## Next
 
 - Add date arithmetic, and perhaps decimals, to the rule language, so that a
-  rule like the 14-day limit can be stated once and enforced.
+  rule like the 14-day limit can be stated once and enforced. Done on
+  2026-10-17: `days(a, b)` and `today()`. The library reference now enforces
+  the limit as `days(record.out, record.due) <= 14`.
 - Teamworld can let a team's own agent write and change its world. This
   experiment suggests that works for simple domains. Changing a world that
   already holds records is untested.

@@ -36,7 +36,8 @@
       "rules": {"read": "actor.role == 'staff' or record.member == actor.id", "create": "actor.role == 'staff'",
                 "update": "actor.role == 'staff'", "delete": "False"},
       "constraints": [
-        {"check": "record.out <= record.due", "message": "A loan is due back after it goes out.", "fields": ["due"]},
+        {"check": "days(record.out, record.due) >= 0", "message": "A loan is due back after it goes out.", "fields": ["due"]},
+        {"check": "days(record.out, record.due) <= 14", "message": "A loan is for at most 14 days.", "fields": ["due"]},
         {"check": "not any(l.tool == record.tool and l.returned is None and l.id != record.id for l in Loan)",
          "message": "This tool is already out on loan.", "fields": ["tool"], "on": ["create"]},
         {"check": "record.member.member_until is not None and record.member.member_until >= record.out",
