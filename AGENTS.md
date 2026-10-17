@@ -61,6 +61,20 @@ which is the joke: like Phoebe's tattoo of the whole world in *Friends*, it is
 just a dot. Other names were considered and set aside: Agentbase and Ontic are
 taken, and Realm is MongoDB's mobile database.
 
+### Releases, and how teamworld depends on World
+
+Ben, 2026-10-17, on Claude's recommendation. World tags releases from `main` as
+`vMAJOR.MINOR.PATCH`, with a GitHub release that says what changed. `v0.1.0` is
+the first. Teamworld pins one release, as a git submodule checked out at the
+tag, so it builds against a fixed World and moves only when it chooses to. That
+needs no packaging and no build step. When teamworld needs a change in World,
+make it here, release it, and move teamworld's pin.
+
+Teamworld follows the same constraint as World: the Python standard library and
+plain browser JavaScript, with no packages or build step without Ben's
+agreement. An OAuth server needs only hashing and random tokens, which the
+standard library has.
+
 ### Order of improvements
 
 Ben, 2026-10-13. After the third experiment, work in this order:
