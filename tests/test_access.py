@@ -194,6 +194,42 @@ class AccessTests(unittest.TestCase):
         viewed = next(index for index, line in enumerate(lines) if "maya via claude-ai  viewed" in line)
         self.assertLess(gave, viewed, lines)
 
+    def test_the_authorization_server_adds_someone_invited_and_they_can_connect(self):
+        self.start()
+        priya = {"by": "ben", "via": "teamworld", "id": "priya", "data": {"name": "Priya", "email": "priya@example.test"}}
+        status, _, _ = self.request("POST", "/api/members", priya, "anything")
+        self.assertEqual(status, 401)  # no issuer key yet
+        key = self.access.issuer_key(create=True)
+        status, _, _ = self.request("POST", "/api/members", priya, self.access.tokens["ben"])
+        self.assertEqual(status, 401)  # a person's token cannot add people, even an admin's
+
+        status, added, _ = self.request("POST", "/api/members", priya, key)
+        self.assertEqual((status, added["member"]), (201, {"type": "Person", "id": "priya", "version": 1}))
+        lines = self.store.audit("ben", "Person", "priya")
+        self.assertRegex(lines[0], r"ben via teamworld +created +Person priya +.*Reason: Invited by ben\.$")
+        self.assertEqual(self.store.get_record("ben", "Person", "priya")["data"]["role"], "member")
+
+        status, issued, _ = self.request("POST", "/api/access", {"actor": "priya", "agent": "claude-ai", "expires_in": 3600}, key)
+        self.assertEqual(status, 201)
+        self.assertEqual(self.access.identify(issued["access_token"]), ("priya", "claude-ai"))
+
+        status, body, _ = self.request("POST", "/api/members", priya, key)
+        self.assertEqual((status, body["error"]["code"]), (409, "already_exists"))
+
+    def test_what_an_invited_person_may_be_given_is_the_worlds_to_decide(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        invite = lambda by, data, member_id="lee": self.request(
+            "POST", "/api/members", {"by": by, "id": member_id, "data": data, "via": "teamworld"}, key)[:2]
+        status, body = invite("maya", {"name": "Lee", "role": "admin"})
+        self.assertEqual((status, body["error"]["code"], body["error"]["details"]["fields"]), (403, "permission_denied", ["role"]))
+        self.assertEqual(invite("maya", {"name": "Lee"})[0], 201)  # a member may invite at the default role
+        self.assertEqual(invite("ben", {"name": "Kim", "role": "admin"}, "kim")[0], 201)
+        self.assertEqual(invite("nobody", {"name": "Jo"}, "jo")[1]["error"]["code"], "unknown_actor")
+        self.assertEqual(invite("ben", {"name": "Jo"}, "Jo Smith")[1]["error"]["code"], "invalid_id")
+        self.assertEqual(invite("ben", {"name": "Jo", "shoe": 9}, "jo")[1]["error"]["code"], "unknown_field")
+        self.assertEqual(invite("ben", {"name": ""}, "jo")[0], 422)
+
     def test_tokens_saved_before_grants_still_work(self):
         self.start()
         token, expired = "t" * 43, "e" * 43
