@@ -59,9 +59,11 @@ class AccessTokens:
         self.tokens = json.loads(self.path.read_text())
         os.chmod(self.path, 0o600)
 
-        # Tokens a person has issued to software acting for them: token -> [actor, agent, expires_at or None].
+        # Access a person has given to software acting for them, and the tokens it holds. A grant lasts until it is
+        # revoked; its tokens may expire and be renewed under it. In agent-access.json:
+        # {"grants": [[actor, agent, given_at or None]], "tokens": {token: [actor, agent, expires_at or None]}}
         self.agent_path = Path(data_dir) / "agent-access.json"
-        self.agents, self._agents_read = {}, None
+        self.given, self.agents, self._agents_read = {}, {}, None
         self._lock = threading.Lock()
         self._reload_agents()
 
@@ -69,23 +71,35 @@ class AccessTokens:
         self.issuer_path = Path(data_dir) / "issuer-key"
 
     def _reload_agents(self):
-        """Read the issued tokens again if the file changed, so a token issued while the world runs works at once."""
+        """Read the grants and tokens again if the file changed, so access given while the world runs works at once."""
         try:
             changed = self.agent_path.stat().st_mtime_ns
         except FileNotFoundError:
             return
         if changed != self._agents_read:
-            agents = json.loads(self.agent_path.read_text())
-            self.agents = {token: [*issued, None][:3] for token, issued in agents.items()}  # older files have no expiry
-            self._agents_read = changed
+            saved = json.loads(self.agent_path.read_text())
+            if "tokens" not in saved:
+                # Before v0.1.1 the file held only tokens, and a grant lasted while one was unexpired.
+                tokens = {token: [*issued, None][:3] for token, issued in saved.items()}
+                now = time.time()
+                given = {(actor, agent): None for actor, agent, expires_at in tokens.values() if expires_at is None or expires_at > now}
+            else:
+                tokens = saved["tokens"]
+                given = {(actor, agent): given_at for actor, agent, given_at in saved["grants"]}
+            self.agents, self.given, self._agents_read = tokens, given, changed
 
     def _save_agents(self):
         now = time.time()
-        self.agents = {token: issued for token, issued in self.agents.items() if issued[2] is None or issued[2] > now}
-        descriptor = os.open(self.agent_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        self.agents = {token: issued for token, issued in self.agents.items()
+                       if (issued[2] is None or issued[2] > now) and tuple(issued[:2]) in self.given}
+        saved = {"grants": [[actor, agent, given_at] for (actor, agent), given_at in sorted(self.given.items())],
+                 "tokens": self.agents}
+        partial = self.agent_path.with_name(self.agent_path.name + ".partial")
+        descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(descriptor, "w") as stream:
-            json.dump(self.agents, stream)
+            json.dump(saved, stream)
             stream.write("\n")
+        os.replace(partial, self.agent_path)  # a reader in another process never sees half a file
         self._agents_read = self.agent_path.stat().st_mtime_ns
 
     def identify(self, token):
@@ -98,7 +112,8 @@ class AccessTokens:
         self._reload_agents()
         now = time.time()
         for credential, (actor, agent, expires_at) in list(self.agents.items()):
-            if hmac.compare_digest(token, credential) and (expires_at is None or expires_at > now):
+            if (hmac.compare_digest(token, credential) and (expires_at is None or expires_at > now)
+                    and (actor, agent) in self.given):
                 return actor, agent
         return None, None
 
@@ -106,10 +121,16 @@ class AccessTokens:
         return self.identify(token)[0]
 
     def issue(self, actor, agent, expires_in=None, *, seeded=True):
-        """A token that acts as this actor and is recorded as this agent.
+        """A token that acts as this actor and is recorded as this agent, giving the agent access if it had none."""
+        return self.give(actor, agent, expires_in, seeded=seeded)[0]
+
+    def give(self, actor, agent, expires_in=None, *, seeded=True, renew=False):
+        """(token, new): a token for this agent to act as this actor, and whether this gave it access it did not have.
 
         Without expires_in, reissuing returns the same token. With it, every call gives a new token that
-        stops working after that many seconds, as an OAuth access token does. seeded=False skips the check
+        stops working after that many seconds, as an OAuth access token does. Access outlasts its tokens:
+        it is given once and ends only when revoked. With renew=True, a token is issued only under access
+        already given, so renewing cannot give back access that was revoked. seeded=False skips the check
         against the seeded actors, for a caller that has checked the world itself.
         """
         if seeded and actor not in self.tokens:
@@ -120,42 +141,62 @@ class AccessTokens:
             raise ValueError("expires_in is a whole number of seconds from 60 to a year.")
         with self._lock:
             self._reload_agents()  # another process may have issued tokens since
-            if expires_in is None:
+            new = (actor, agent) not in self.given
+            if new and renew:
+                raise LookupError("This agent has no access to renew. It was revoked or never given.")
+            if new:
+                self.given[(actor, agent)] = round(time.time())
+            elif expires_in is None:
                 for token, issued in self.agents.items():
                     if issued == [actor, agent, None]:
-                        return token
+                        return token, False
             token = secrets.token_urlsafe(32)
             self.agents[token] = [actor, agent, None if expires_in is None else round(time.time() + expires_in)]
             self._save_agents()
-            return token
+            return token, new
 
     def has_grant(self, actor, agent):
-        """Whether this agent may act for this actor now."""
-        return any(grant["agent"] == agent for grant in self.grants(actor))
+        """Whether this agent has been given access to act for this actor and it has not been revoked."""
+        self._reload_agents()
+        return (actor, agent) in self.given
 
     def revoke(self, token=None, actor=None, agent=None):
-        """Stop a token working, or every token issued to this actor's agent. Returns the [actor, agent] of each stopped."""
+        """Stop one token, or end this actor's agent's access and every token it holds.
+
+        Returns (working tokens stopped, the [actor, agent] of each access ended). Stopping one token ends no access.
+        """
         with self._lock:
             self._reload_agents()
             stopped = [credential for credential, issued in self.agents.items()
                        if (token is not None and hmac.compare_digest(credential, token))
                        or (token is None and issued[:2] == [actor, agent])]
-            pairs = [self.agents.pop(credential)[:2] for credential in stopped]
-            if stopped:
+            now = time.time()
+            working = 0
+            for credential in stopped:
+                expires_at = self.agents.pop(credential)[2]
+                working += expires_at is None or expires_at > now
+            ended = [[actor, agent]] if token is None and self.given.pop((actor, agent), False) is not False else []
+            if stopped or ended:
                 self._save_agents()
-            return pairs
+            return working, ended
 
     def grants(self, actor=None):
-        """Which agents may act for whom, and until when; never the tokens themselves."""
+        """Who has given which agents access, when, and until when its tokens work; never the tokens themselves.
+
+        expires_at is when the last of its tokens stops working, None if one never does, and tokens how many work now.
+        Access with no working token still stands, until it is revoked.
+        """
         self._reload_agents()
         now = time.time()
-        found = {}
-        for issued_actor, agent, expires_at in self.agents.values():
-            if (actor is None or issued_actor == actor) and (expires_at is None or expires_at > now):
-                key = (issued_actor, agent)
-                latest = found.get(key, 0)
-                found[key] = None if latest is None or expires_at is None else max(latest, expires_at)
-        return [{"actor": key[0], "agent": key[1], "expires_at": expires_at} for key, expires_at in sorted(found.items())]
+        found = []
+        for (issued_actor, agent), given_at in sorted(self.given.items()):
+            if actor is not None and issued_actor != actor:
+                continue
+            live = [expires_at for token_actor, token_agent, expires_at in self.agents.values()
+                    if (token_actor, token_agent) == (issued_actor, agent) and (expires_at is None or expires_at > now)]
+            found.append({"actor": issued_actor, "agent": agent, "given_at": given_at, "tokens": len(live),
+                          "expires_at": None if not live or None in live else max(live)})
+        return found
 
     def issuer_key(self, create=False):
         """The authorization server's key, made on first request with create=True; None if there is none."""
@@ -343,29 +384,31 @@ class WorldHandler(BaseHTTPRequestHandler):
             return self._respond(200, {"grants": access.grants(parse_qs(query).get("actor", [None])[0])})
         if method == "POST":
             actor, agent, expires_in = body.get("actor"), body.get("agent"), body.get("expires_in")
+            if not self.server.store.actor_exists(actor):
+                raise ClientError(422, "unknown_actor", "No one in this world has that id.")
             by, via = self._granter(body, actor)
-            new = not access.has_grant(actor, agent)
             try:
-                token = access.issue(actor, agent, expires_in, seeded=False)
+                token, new = access.give(actor, agent, expires_in, seeded=False, renew=body.get("renew") is True)
             except ValueError as error:
                 raise ClientError(422, "invalid_access", str(error)) from None
-            if new:  # renewing an expiring token is not new access, so it adds no line
+            except LookupError as error:
+                raise ClientError(409, "no_access", str(error)) from None
+            if new:  # renewing is not new access, so it adds no line, however long since the last token
                 self.server.store.record_access(by, "gave", actor, agent, "", by_agent=via)
             issued = {"access_token": token, "token_type": "Bearer", "actor": actor, "agent": agent}
             return self._respond(201, {**issued, **({"expires_in": expires_in} if expires_in is not None else {})})
         if method == "DELETE":
             if isinstance(body.get("token"), str):
                 by, via = self._granter(body, None)
-                stopped = access.revoke(token=body["token"])
+                stopped, ended = access.revoke(token=body["token"])  # one token; the access stands
             elif isinstance(body.get("actor"), str) and isinstance(body.get("agent"), str):
                 by, via = self._granter(body, body["actor"])
-                stopped = access.revoke(actor=body["actor"], agent=body["agent"])
+                stopped, ended = access.revoke(actor=body["actor"], agent=body["agent"])
             else:
                 raise ClientError(422, "invalid_access", 'Name a "token", or an "actor" and an "agent".')
-            for actor, agent in sorted({tuple(pair) for pair in stopped}):
-                if not access.has_grant(actor, agent):
-                    self.server.store.record_access(by or actor, "revoked", actor, agent, "", by_agent=via)
-            return self._respond(200, {"revoked": len(stopped)})
+            for actor, agent in ended:
+                self.server.store.record_access(by or actor, "revoked", actor, agent, "", by_agent=via)
+            return self._respond(200, {"revoked": stopped, "ended": len(ended)})
         raise ClientError(405, "method_not_allowed", "Use GET, POST, or DELETE.")
 
     def _granter(self, body, actor):
