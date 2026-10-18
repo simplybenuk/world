@@ -218,7 +218,9 @@ class WorldHTTPServer(ThreadingHTTPServer):
         self.public_url = public_url.rstrip("/") if public_url else None
         self.authorization_server = authorization_server
         self.access = access
-        self.planner = planner or CodexPlanner()
+        # The reference client's planner runs a model on this host, on its account. World provides no model,
+        # so there is none unless whoever starts the server asks for it (main(): --codex or WORLD_CODEX_BIN).
+        self.planner = planner
         self.meter = meter  # called with (method, path, status, response bytes) for measurement
         super().__init__(address, WorldHandler)
 
@@ -255,7 +257,9 @@ class WorldHandler(BaseHTTPRequestHandler):
             if method == "GET" and path in {"/", "/index.html", "/app.js", "/styles.css"}:
                 return self._static(path)
             if method == "GET" and path == "/health":
-                return self._respond(200, {"status": "ok", "provider": "codex", "provider_available": self.server.planner.available,
+                planner = self.server.planner
+                return self._respond(200, {"status": "ok", "provider": "codex" if planner else None,
+                                           "provider_available": bool(planner and planner.available),
                                            "world": self.server.store.definition.title, "protocol_version": "0.1"})
             if method == "GET" and path in {"/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"}:
                 return self._resource_metadata()
@@ -284,6 +288,9 @@ class WorldHandler(BaseHTTPRequestHandler):
                 status, value = answer
                 return self._text(status, value) if isinstance(value, str) else self._respond(status, value)
             if path == "/client/intent" and method == "POST":
+                if self.server.planner is None:
+                    raise ClientError(503, "provider_unavailable", "This world runs no model. Record browsing and editing still work, "
+                                      "and agents connect at /mcp with their own.")
                 # These records leave the service for a model, so the audit names the gateway.
                 result = self.server.planner.plan(store.describe(actor_id), store.list_records(actor_id, agent=self.agent or "client-gateway"),
                                                  body.get("message"), body.get("context"))
@@ -506,7 +513,7 @@ class WorldHandler(BaseHTTPRequestHandler):
             raise error
 
     def _provenance(self, actor_id, body):
-        reason = body.get("reason", "Changed through the World client")
+        reason = body.get("reason", "No reason given.")  # the browser client always sends one; agents may not
         if not isinstance(reason, str) or len(reason) > 4000:
             raise ClientError(400, "invalid_reason", "A change reason must be text of up to 4,000 characters.")
         evidence = body.get("evidence", [])
@@ -599,6 +606,9 @@ def main():
                         help="The URL this world is reached at, such as https://example.com; needed with --authorization-server")
     parser.add_argument("--authorization-server", default=os.environ.get("WORLD_AUTHORIZATION_SERVER"),
                         help="The OAuth authorization server where MCP clients sign in for a token to this world")
+    parser.add_argument("--codex", action="store_true",
+                        help="Let the reference client ask Codex on this host to plan views, on this host's Codex account. "
+                        "Setting WORLD_CODEX_BIN does the same. Off otherwise: World provides no model")
     args = parser.parse_args()
     definition = worlds.load(args.world)
     default_dir = DEFAULT_DATA_DIR if definition.name == "team" else DEFAULT_DATA_DIR / definition.name
@@ -637,7 +647,8 @@ def main():
     except ValueError as error:
         parser.error(str(error))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    server = WorldHTTPServer((args.host, args.port), store, access, public_url=args.public_url,
+    planner = CodexPlanner() if args.codex or os.environ.get("WORLD_CODEX_BIN") else None
+    server = WorldHTTPServer((args.host, args.port), store, access, planner, public_url=args.public_url,
                              authorization_server=args.authorization_server)
     logging.info("%s world listening on %s:%s; data in %s", args.world, args.host, args.port, data_dir)
     try:

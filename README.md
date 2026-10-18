@@ -434,8 +434,8 @@ If World needs to know what a button, form, dashboard or Kanban board is, the ab
 Very experimental.
 
 The first experiment has a SQLite record service, an introspectable JSON protocol,
-and a generic browser client. Codex generates temporary view plans from the
-discovered schema and records. The client renders them and presents proposed
+and a generic browser client. When the server is started with `--codex`, Codex
+generates temporary view plans from the discovered schema and records. The client renders them and presents proposed
 changes for review. The record service validates and saves accepted changes,
 including permissions, versions and history.
 

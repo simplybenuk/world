@@ -194,6 +194,17 @@ class AccessTests(unittest.TestCase):
         viewed = next(index for index, line in enumerate(lines) if "maya via claude-ai  viewed" in line)
         self.assertLess(gave, viewed, lines)
 
+    def test_an_agent_that_gives_no_reason_is_not_said_to_be_the_client(self):
+        self.start()
+        key = self.access.issuer_key(create=True)
+        token = self.request("POST", "/api/access", {"actor": "maya", "agent": "claude-ai", "expires_in": 3600}, key)[1]["access_token"]
+        status, body, _ = self.request("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+            "name": "create", "arguments": {"type": "Task", "data": {"title": "Write the notes", "project": "website"}}}}, token)
+        self.assertFalse(body["result"]["isError"], body)
+        created = [line for line in self.store.audit("maya") if "maya via claude-ai  created" in line]
+        self.assertEqual(len(created), 1)
+        self.assertTrue(created[0].endswith("Reason: No reason given."), created[0])
+
     def test_the_authorization_server_adds_someone_invited_and_they_can_connect(self):
         self.start()
         priya = {"by": "ben", "via": "teamworld", "id": "priya", "data": {"name": "Priya", "email": "priya@example.test"}}

@@ -95,6 +95,16 @@ alternative, letting each world's own rules allow members to create people,
 would leave every world's author to get it right. Field write rules still
 apply, so inviting cannot grant what the inviter could not.
 
+### A World runs no model unless its host asks
+
+Ben, 2026-10-18, on Claude's recommendation. The reference client's planner
+runs Codex on the server, on the host's account, for anyone with a token. That
+was safe while World ran only for Ben, but a hosted world, such as each of
+teamworld's teams, would let any member spend the host's account. The planner
+now runs only when the server is started with `--codex` or with
+`WORLD_CODEX_BIN` set, as `scripts/install_service.py` does. Released in
+`v0.1.2`.
+
 ### Order of improvements
 
 Ben, 2026-10-13. After the third experiment, work in this order:
