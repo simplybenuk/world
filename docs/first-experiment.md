@@ -10,14 +10,17 @@ conversation. Saved records and their history remain.
 The record service and browser client need Python 3.11 or newer. They use the
 Python standard library and plain browser JavaScript, with no package install or
 build step. AI view generation also needs the Codex CLI on the server, signed in
-as the same operating-system user that runs World.
+as the same operating-system user that runs World, and `--codex` when starting
+it. Without `--codex`, or `WORLD_CODEX_BIN` naming the Codex executable, the
+server runs no model, so a world hosted for other people cannot spend the
+host's Codex account.
 
 Run these commands from the repository directory:
 
 ```sh
 python3 --version
 codex login status
-python3 -m world.server
+python3 -m world.server --codex
 ```
 
 The server listens on `127.0.0.1:8787` by default. The first start creates the
@@ -43,7 +46,7 @@ shared logs, and tickets.
 For an isolated trial, give both commands the same `--data-dir`:
 
 ```sh
-python3 -m world.server --data-dir /tmp/world-trial --port 8788
+python3 -m world.server --codex --data-dir /tmp/world-trial --port 8788
 ```
 
 ```sh
@@ -293,7 +296,8 @@ of seconds, hit account usage limits, or time out. An unavailable provider
 returns an error instead of a simulated view. You can still browse records and
 use the discovered create and edit forms.
 
-`/health` checks for the Codex executable. A successful AI request also verifies
+`/health` checks for the Codex executable, and reports no provider when the
+server was started without `--codex`. A successful AI request also verifies
 that login, network access, and account usage are working.
 
 The database stores record state and audit history. The record model contains
