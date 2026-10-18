@@ -193,6 +193,13 @@ first token gives access. Later ones renew it, however long after the last one
 expired, and add nothing to the audit. Renewing with `"renew": true` refuses
 with 409 when the access was revoked, so a refresh cannot give it back.
 `DELETE {"token"}` stops one token and leaves the access.
+The same key adds people: `POST /api/members {"id", "data", "by"}` creates a
+record of the actor type, with the id given, for someone invited by `by`, a
+person already in the world. The type's create rule is not asked, because the
+key is the authority, but a guarded field set to anything but its default must
+pass its write rule for `by`. It is an ordinary `created` line in the audit,
+such as `ben via teamworld  created  Person priya`.
+
 Giving and revoking access are audit lines on the record of the person the
 agent acts for. They name who did it with `"by"` (the person, unless said
 otherwise) and the software they used with `"via"`:
