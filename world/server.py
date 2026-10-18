@@ -275,6 +275,8 @@ class WorldHandler(BaseHTTPRequestHandler):
                 return self._respond(200, {"signed_out": True}, cookie="world_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
             if path == "/api/access":
                 return self._access(method, split.query, body)
+            if path == "/api/members":
+                return self._members(method, body)
             actor_id = self._actor()
             store = self.server.store
             answer = self._operate(method, path, split.query, body, actor_id)
@@ -373,12 +375,29 @@ class WorldHandler(BaseHTTPRequestHandler):
             value += f', resource_metadata="{self.server.public_url}/.well-known/oauth-protected-resource/mcp"'
         return value + (f', error="{error}"' if error else "")
 
-    def _access(self, method, query, body):
-        """For the authorization server only: issue, list, and revoke the tokens agents act with."""
+    def _require_issuer(self):
         authorization = self.headers.get("Authorization", "")
         key = self.server.access.issuer_key()
         if not key or not authorization.startswith("Bearer ") or not hmac.compare_digest(authorization[7:], key):
-            raise ClientError(401, "issuer_required", "Only this world's authorization server may issue access, with its issuer key.")
+            raise ClientError(401, "issuer_required", "Only this world's authorization server may do this, with its issuer key.")
+
+    def _members(self, method, body):
+        """For the authorization server only: add someone invited by a person already in the world."""
+        self._require_issuer()
+        if method != "POST":
+            raise ClientError(405, "method_not_allowed", "Use POST.")
+        by = body.get("by")
+        if not self.server.store.actor_exists(by):
+            raise ClientError(422, "unknown_actor", 'Name who invited them with "by", someone already in this world.')
+        _, via = self._granter(body, by)
+        if not isinstance(body.get("data"), dict):
+            raise ClientError(422, "invalid_data", 'Send the new person\'s fields as a JSON object under "data".')
+        member = self.server.store.add_member(by, body.get("id"), body["data"], body.get("reason"), by_agent=via)
+        return self._respond(201, {"member": member})
+
+    def _access(self, method, query, body):
+        """For the authorization server only: issue, list, and revoke the tokens agents act with."""
+        self._require_issuer()
         access = self.server.access
         if method == "GET":
             return self._respond(200, {"grants": access.grants(parse_qs(query).get("actor", [None])[0])})

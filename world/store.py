@@ -896,6 +896,45 @@ class WorldStore:
         self._audit(connection, "create", actor_id, provenance, None, record)
         return self._public(connection, actor, record)
 
+    def add_member(
+        self, by: str, member_id: Any, data: dict[str, Any], reason: Any = None, *, by_agent: str | None = None,
+    ) -> dict[str, Any]:
+        """Add a person to the world, for an authorization server inviting them on behalf of someone already in it.
+
+        The new record is of the actor type and has the id given, so it can be given access at once. The type's
+        create rule is not asked: the server's key is the authority, as seeding is at start-up. Fields and
+        constraints are checked as for any record, and the audit names who invited them.
+        """
+        actor_type = self.definition.actor_type
+        if not isinstance(member_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", member_id):
+            raise WorldError(422, "invalid_id", "A member's id is up to 64 lowercase letters, digits, hyphens, or underscores.")
+        with self._transaction(write=True) as connection:
+            actor = self._actor(connection, by)
+            if self._raw(connection, actor_type, member_id, include_deleted=True) is not None:
+                raise WorldError(409, "already_exists", f"Someone in this world already has the id {member_id}.")
+            data = validate_data(self.types, actor_type, data, actor_id=by)
+            proposed = {"type": actor_type, "id": member_id, "data": data}
+            # Who may invite is the server's to decide, but what they may grant is the world's: a guarded field
+            # set to anything but its default needs the inviter to pass its write rule.
+            fields = self.types[actor_type]["fields"]
+            default = lambda spec: by if spec.get("default") == "$actor" else spec.get("default")
+            refused = sorted(
+                field for field, spec in fields.items()
+                if "write_rule" in spec and ("default" not in spec or data.get(field) != default(spec))
+                and not self._holds(connection, spec["write_rule"], actor, proposed, None, proposed)
+            )
+            if refused:
+                raise WorldError(
+                    403, "permission_denied", "The person inviting them is not allowed to set these fields.",
+                    {"fields": refused, "rules": {field: fields[field]["write_rule"] for field in refused}},
+                )
+            self._validate_relationships(connection, actor, actor_type, member_id, data, None)
+            provenance = self._provenance(connection, by, "create", {
+                "reason": reason if reason is not None else f"Invited by {by}.", "agent": by_agent})
+            record = self._insert(connection, actor_type, member_id, data, _now())
+            self._audit(connection, "create", by, provenance, None, record)
+            return {"type": actor_type, "id": member_id, "version": record["version"]}
+
     def update(
         self, actor_id: str, type_name: str, record_id: str, changes: dict[str, Any],
         expected_version: int, provenance: dict[str, Any] | None = None,

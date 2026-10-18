@@ -85,6 +85,16 @@ unexpired token existed, so an agent renewing after a quiet weekend added a
 true. An authorization server renews with `"renew": true`, which refuses when
 the access was revoked. To be released as `v0.1.1`.
 
+### The authorization server adds the people it invites
+
+Ben, 2026-10-18, on Claude's recommendation. A token can only be issued for a
+person already in the world, so an authorization server needs a way to add the
+people it invites. `POST /api/members`, with the issuer key, creates them as
+someone already in the world, without asking the type's create rule. The
+alternative, letting each world's own rules allow members to create people,
+would leave every world's author to get it right. Field write rules still
+apply, so inviting cannot grant what the inviter could not.
+
 ### Order of improvements
 
 Ben, 2026-10-13. After the third experiment, work in this order:
