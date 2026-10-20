@@ -163,8 +163,11 @@ An agent with a shell can use the JSON API under `/api` with curl.
 
 An agent that reaches outside services through Model Context Protocol (MCP)
 connectors, such as a chat app, connects to `POST /mcp` with the same token as a
-bearer token. It offers nine tools: `describe`, `query`, `get`, `create`,
-`update`, `delete`, `change`, `history`, and `audit`. Each goes through the same
+bearer token. It offers ten tools: `describe`, `query`, `get`, `create`,
+`update`, `delete`, `change`, `define`, `history`, and `audit`. `define` changes
+the world's definition while it runs, for whoever the definition's `define`
+rule allows. See [changing a world while it runs](docs/changing-a-world.md).
+Each goes through the same
 code as the JSON API, so it is checked and audited alike. The endpoint speaks MCP
 2026-07-28 and the earlier versions that begin with `initialize`, and keeps no
 session. For example, with Claude Code:

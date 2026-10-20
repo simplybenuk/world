@@ -67,8 +67,9 @@ on World would need, such as the MCP server, is done in World.
    existing records migrated and the change in the audit. Start from the JSON
    definitions and declared stage transitions on `experiment/crm-world`; see
    [the parallel line](crm-world-branch.md).
-   Designed, awaiting Ben's decisions, 2026-10-19: see
-   [changing a world while it runs](changing-a-world.md).
+   Built, 2026-10-20: the world holds its definition and its revisions, and
+   an agent changes it with the `define` tool when the definition's `define`
+   rule allows. See [changing a world while it runs](changing-a-world.md).
 4. **A readable audit page.** Show each team its audit, so the second of
    World's aims is visible.
 5. **Who may read history.** Decide whether reading a record's history needs

@@ -67,6 +67,20 @@ TOOLS = [
           "A later step may write \"$NAME\" for the id of a record created earlier.",
           {"steps": {"type": "array", "items": {"type": "object"}}, "reason": _REASON}, ["steps"],
           readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+    _tool("define", "Change this world's definition: add, replace, or remove types, rename fields and enum values. "
+          "Call it with no change to get the definition as data and its revision. types maps each type to its whole new "
+          "definition, in that form, or to null to remove it; types not named stay. rename is {\"Type.old_field\": \"new_field\"}, "
+          "so values carry over. values is {\"Type.field\": {\"old value\": \"new value\"}}. A field to fill in for existing "
+          "records is added optional, filled with change, then made required. check: true says what would happen and saves "
+          "nothing. A change that would leave any record invalid is refused, naming the records. describe says whether you may.",
+          {"types": {"type": "object", "description": "Type names to whole type definitions, or null to remove", "additionalProperties": True},
+           "rename": {"type": "object", "additionalProperties": {"type": "string"}},
+           "values": {"type": "object", "additionalProperties": {"type": "object"}},
+           "rules": {"type": "object", "description": "The world's rules: define, who may change the definition"},
+           "title": {"type": "string"},
+           "expected_revision": {"type": "integer", "description": "The definition's revision, from describe or define"},
+           "reason": _REASON, "check": {"type": "boolean"}},
+          readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
     _tool("history", "Every version of one record: what changed, when, who, and why.", {"type": _TYPE, "id": _ID}, ["type", "id"], **READ),
     _tool("audit", "Plain-text lines of when, who, and what happened: for the whole world, or for one record with type and id.",
           {"type": _TYPE, "id": _ID, "limit": {"type": "integer", "description": "At most this many lines, newest last; 500 by default"}}, **READ),
@@ -96,6 +110,11 @@ def _request(name, arguments):
         return "POST", "/api/query", "", _pick(arguments, "type", "where", "include", "limit", "after", "count")
     if name == "change":
         return "POST", "/api/changes", "", _pick(arguments, "steps", "reason")
+    if name == "define":
+        changing = ("types", "rename", "values", "rules", "title")
+        if not any(key in arguments for key in changing):
+            return "GET", "/api/definition", "", {}
+        return "POST", "/api/definition", "", _pick(arguments, *changing, "expected_revision", "reason", "check")
     if name == "audit":
         if "type" in arguments or "id" in arguments:
             return "GET", f"/api/audit/{_text(arguments, 'type')}/{_text(arguments, 'id')}", urlencode(_pick(arguments, "limit")), {}

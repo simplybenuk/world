@@ -349,11 +349,17 @@ def reads(expression: str, types: dict[str, Any], record_type: str, actor_type: 
     so the engine need not judge it again after such a change.
     """
     tree = parse(expression, tuple(types))
+    if any(isinstance(node, ast.Call) and node.func.id == "can_read" for node in ast.walk(tree)):  # type: ignore[attr-defined]
+        return None  # depends on read rules, which may read anything
+    return named_fields(expression, types, record_type, actor_type)
+
+
+def named_fields(expression: str, types: dict[str, Any], record_type: str, actor_type: str) -> set[tuple[str, str]]:
+    """The (type, field) pairs an expression names, following references, whether or not they exist."""
+    tree = parse(expression, tuple(types))
     found: set[tuple[str, str]] = set()
     names = {"record": record_type, "saved": record_type, "actor": actor_type}
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and node.func.id == "can_read":  # type: ignore[attr-defined]
-            return None  # depends on read rules, which may read anything
         if isinstance(node, ast.Call) and node.func.id == "changed":  # type: ignore[attr-defined]
             found.add((record_type, node.args[0].value))  # type: ignore[attr-defined]
         if isinstance(node, ast.GeneratorExp):

@@ -72,7 +72,7 @@ class MCPTests(unittest.TestCase):
         self.assertEqual(body["result"]["resultType"], "complete")
         status, body, _ = self.modern("tools/list")
         names = [tool["name"] for tool in body["result"]["tools"]]
-        self.assertEqual(names, ["describe", "query", "get", "create", "update", "delete", "change", "history", "audit"])
+        self.assertEqual(names, ["describe", "query", "get", "create", "update", "delete", "change", "define", "history", "audit"])
         self.assertEqual(body["result"]["cacheScope"], "public")
 
     def test_tools_read_change_and_audit_as_person_via_agent(self):
