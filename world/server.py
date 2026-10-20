@@ -43,6 +43,13 @@ OPERATIONS = {
     "history": "GET /api/history/TYPE/ID",
     "audit": "GET /api/audit or GET /api/audit/TYPE/ID, plain text lines of when, who, and what happened",
 }
+# Shown only to those who may change the definition, so that others pay nothing to read it.
+DEFINING = {
+    "definition": "GET /api/definition, the definition as data with its revision",
+    "change the definition": 'POST /api/definition {"types": {TYPE: {...the whole type...} or null}, "rename": {"Type.old": "new"}, '
+                             '"values": {"Type.field": {"old": "new"}}, "expected_revision": N, "reason": WHY, "check": true}. '
+                             "Refused, naming the records, if any record would not fit",
+}
 
 
 class AccessTokens:
@@ -321,7 +328,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             if "type_index" in description:
                 acting["types"] = ("type_index lists every type. GET /api/world?types=A,B gives the fields, rules, "
                                    "and what you may do for the types you name.")
-            return (200, {**description, **acting, "operations": OPERATIONS})
+            defining = DEFINING if description["definition"]["capabilities"]["define"] else {}
+            return (200, {**description, **acting, "operations": {**OPERATIONS, **defining}})
         if path == "/api/records" and method == "GET":
             query = parse_qs(query)
             type_name, limit = query.get("type", [None])[0], query.get("limit", ["100"])[0]
@@ -335,6 +343,11 @@ class WorldHandler(BaseHTTPRequestHandler):
                                include=body.get("include"), limit=body.get("limit", 100), after=body.get("after"),
                                count=body.get("count") is True, agent=self.agent)
             return (200, self._page(found, body.get("include")))
+        if path == "/api/definition" and method == "GET":
+            revision = parse_qs(query).get("revision", [None])[0]
+            return (200, store.definition_at(actor_id, int(revision) if revision and revision.isdecimal() else revision))
+        if path == "/api/definition" and method == "POST":
+            return (200, store.define(actor_id, body, agent=self.agent))
         if path == "/api/changes" and method == "POST":
             return (200, {"records": store.apply(actor_id, body.get("steps"), self._provenance(actor_id, body))})
         parts = [unquote(part) for part in path.strip("/").split("/")]
@@ -606,6 +619,8 @@ def main():
                         help="The URL this world is reached at, such as https://example.com; needed with --authorization-server")
     parser.add_argument("--authorization-server", default=os.environ.get("WORLD_AUTHORIZATION_SERVER"),
                         help="The OAuth authorization server where MCP clients sign in for a token to this world")
+    parser.add_argument("--world-from-file", action="store_true",
+                        help="Apply the --world definition even if the world's definition was changed while it ran")
     parser.add_argument("--codex", action="store_true",
                         help="Let the reference client ask Codex on this host to plan views, on this host's Codex account. "
                         "Setting WORLD_CODEX_BIN does the same. Off otherwise: World provides no model")
@@ -643,7 +658,7 @@ def main():
         print(base.rstrip("/") + "/#token=" + access.tokens[args.actor])
         return
     try:
-        store = WorldStore(data_dir / "world.sqlite3", definition)
+        store = WorldStore(data_dir / "world.sqlite3", definition, from_file=args.world_from_file)
     except ValueError as error:
         parser.error(str(error))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

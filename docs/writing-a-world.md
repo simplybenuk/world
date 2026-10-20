@@ -40,8 +40,33 @@ access, and a record comes after the records it refers to:
 Serve it with `python3 -m world.server --world clinic.json --data-dir DIRECTORY`.
 `bench/briefs/clinic-reference.json` is a complete example.
 
-The engine parses every rule when the world loads. A rule it cannot parse stops
-the server from starting and names the type.
+The engine parses every rule when the world loads. A rule it cannot parse, or
+one that reads a field no type has, stops the server from starting and names
+the type.
+
+## Changing it while it runs
+
+The file creates the world. After that, the world holds its own definition and
+every earlier revision of it, and an agent may change it with the `define`
+tool, or `POST /api/definition`, if the definition says who may:
+
+```json
+{"name": "clinic", "rules": {"define": "actor.role == 'admin'"}, "types": {...}}
+```
+
+The `define` rule is judged with `actor` alone. Without it, no one may change
+the definition while the world runs. A change replaces or removes whole types,
+and can rename fields and enum values so that records keep their values. It is
+refused, and nothing is saved, if any record would not fit the new definition,
+or if the person making it could no longer change it afterwards. Each change
+is a `changed definition` line in the audit. See
+[changing a world while it runs](changing-a-world.md) for what each kind of
+change does to the records already saved.
+
+Starting the server with a changed file applies the file as a change by
+`system`, unless the definition was also changed while the world ran. Then the
+server will not start until you choose: start it with the definition it holds,
+from `GET /api/definition`, or apply the file over it with `--world-from-file`.
 
 ## A type
 

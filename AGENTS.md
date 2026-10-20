@@ -105,6 +105,19 @@ now runs only when the server is started with `--codex` or with
 `WORLD_CODEX_BIN` set, as `scripts/install_service.py` does. Released in
 `v0.1.2`.
 
+### A world's definition changes while it runs
+
+Ben asked for it on 2026-10-20, from Claude's design in
+`docs/changing-a-world.md`. The database holds the definition and every
+revision. The `--world` file only creates the world, and a changed file is
+applied as a change by `system`. A `define` rule in the definition says who
+may change it, and without one no one may. An agent changes it with the
+`define` tool. A change that would leave any live record invalid is refused,
+naming the records, and nothing is saved. There is no migration language:
+values the engine cannot know are filled in by the agent with `change`, so
+each is in the audit. The design's five open decisions were taken as it
+proposed them, and Ben may revisit them.
+
 ### Order of improvements
 
 Ben, 2026-10-13. After the third experiment, work in this order:

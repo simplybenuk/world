@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import copy
 from copy import deepcopy
 from datetime import datetime, timezone
 import ast
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -14,7 +16,8 @@ from typing import Any, Iterator
 from uuid import uuid4
 
 from . import rules
-from .definition import Definition
+from .definition import DataDefinition, Definition
+from .rules import RuleError
 from .schema import WorldError, references, require_type, validate_data, validate_value
 
 
@@ -27,6 +30,11 @@ APPLY_HELP = (
     '"expected_version": N}, {"delete": TYPE, "id": ID, "expected_version": N}], "reason": WHY}'
 )
 INDEX_ABOVE = 12  # a world with more types than this describes itself as an index first
+DEFINE_HELP = (
+    '{"types": {TYPE: {...the whole type...} or null to remove it}, "rename": {"Type.old_field": "new_field"}, '
+    '"values": {"Type.field": {"old value": "new value"}}, "rules": {"define": EXPRESSION}, "title": TITLE, '
+    '"expected_revision": N, "reason": WHY, "check": true to see what would happen without saving}'
+)
 WHERE_HELP = (
     "One expression over record and actor, such as: record.stage == 'won' and record.organization.owner == actor.id. "
     "Use ==, !=, <, <=, >, >=, in, not in, is None, and, or, not. A dot follows a reference to the record it names. "
@@ -45,6 +53,14 @@ def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
+class _Checked(Exception):
+    """Leaves a change's transaction, undoing it, with what the change would have done."""
+
+    def __init__(self, result: dict[str, Any]) -> None:
+        super().__init__("checked")
+        self.result = result
+
+
 class WorldStore:
     """One database, with a new SQLite connection for every operation.
 
@@ -57,21 +73,15 @@ class WorldStore:
     # NORMAL does not wait. The database stays consistent, but a power cut can lose the last moments.
     synchronous = "FULL"
 
-    def __init__(self, path: str | Path, definition: Definition | None = None) -> None:
+    def __init__(self, path: str | Path, definition: Definition | None = None, *, from_file: bool = False) -> None:
+        """Open or create the world at path. The definition creates a new world. An existing world runs the
+        definition it holds, which the given one changes only as docs/changing-a-world.md describes;
+        from_file applies the given one even over changes made while the world ran."""
         if definition is None:
             from worlds.team import DEFINITION as definition
         definition.check()
-        self.definition = definition
-        self.types = definition.types
-        # Types whose constraints could be broken by a change to something they refer to,
-        # plus the types through which such a type is reached.
-        self._dependent = self._dependent_types()
-        # Every field any constraint can read, or None when that cannot be known.
-        self._constraint_reads: set[tuple[str, str]] | None = set()
-        for type_name, definition in self.types.items():
-            for constraint in definition.get("constraints", []):
-                found = rules.reads(constraint["check"], self.types, type_name, self.definition.actor_type)
-                self._constraint_reads = None if found is None or self._constraint_reads is None else self._constraint_reads | found
+        self._adopt(definition)
+        self._from_file = from_file
         self._keeper: sqlite3.Connection | None = None
         self._uri = str(path) == ":memory:"
         if self._uri:
@@ -85,15 +95,37 @@ class WorldStore:
             self._database = self.path
         self._initialize()
 
-    def _dependent_types(self) -> set[str]:
+    def _adopt(self, definition: Definition, revision: int = 0) -> None:
+        """Run this definition, with what the engine works out from it."""
+        types = definition.types
+        # Every field any constraint can read, or None when that cannot be known.
+        reads: set[tuple[str, str]] | None = set()
+        for type_name, spec in types.items():
+            for constraint in spec.get("constraints", []):
+                found = rules.reads(constraint["check"], types, type_name, definition.actor_type)
+                reads = None if found is None or reads is None else reads | found
+        # Types whose constraints could be broken by a change to something they refer to,
+        # plus the types through which such a type is reached.
+        dependent = self._dependent_types(types)
+        self.definition, self.types, self._dependent, self._constraint_reads, self._revision = (
+            definition, types, dependent, reads, revision)
+
+    def _held(self, data: dict[str, Any]) -> Definition:
+        """A stored definition. The people seeded when the world was created come from the one it started with."""
+        definition = DataDefinition(data)
+        definition.actors, definition.seed_reason = self.definition.actors, self.definition.seed_reason
+        return definition
+
+    @staticmethod
+    def _dependent_types(types: dict[str, Any]) -> set[str]:
         """Types worth visiting when following references back from a changed record."""
         referrers: dict[str, set[str]] = {}
-        for type_name, definition in self.types.items():
+        for type_name, definition in types.items():
             for spec in definition["fields"].values():
                 target = spec.get("target") or spec.get("items", {}).get("target")
                 if target:
                     referrers.setdefault(target, set()).add(type_name)
-        dependent = {type_name for type_name, definition in self.types.items() if definition.get("constraints")}
+        dependent = {type_name for type_name, definition in types.items() if definition.get("constraints")}
         while True:
             # A type with no constraints still leads somewhere if a dependent type refers to it.
             more = {target for target, sources in referrers.items() if sources & dependent} - dependent
@@ -123,6 +155,8 @@ class WorldStore:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+            if self._revision:
+                self._follow(connection)
             yield connection
             connection.commit()
         except sqlite3.Error as error:
@@ -231,19 +265,26 @@ class WorldStore:
                     BEFORE DELETE ON access BEGIN
                         SELECT RAISE(ABORT, 'World history is append-only');
                     END;
+                -- Every definition the world has run, as JSON. The latest is the one it runs.
+                CREATE TABLE IF NOT EXISTS definitions (
+                    revision INTEGER PRIMARY KEY,
+                    at TEXT NOT NULL,
+                    actor TEXT NOT NULL,
+                    agent TEXT,
+                    reason TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    definition TEXT NOT NULL,
+                    after_event INTEGER NOT NULL
+                );
+                CREATE TRIGGER IF NOT EXISTS definitions_no_update
+                    BEFORE UPDATE ON definitions BEGIN
+                        SELECT RAISE(ABORT, 'World history is append-only');
+                    END;
+                CREATE TRIGGER IF NOT EXISTS definitions_no_delete
+                    BEFORE DELETE ON definitions BEGIN
+                        SELECT RAISE(ABORT, 'World history is append-only');
+                    END;
             """)
-            # One index per field name, shared by every type that has the field, so that a lookup by
-            # value does not read every record. An index per type and field would mean thousands
-            # of indexes in a large world, and every write pays for each one.
-            indexed = {
-                field for definition in self.types.values() for field, spec in definition["fields"].items()
-                if spec["type"] in ("reference", "enum", "date", "integer") or (spec["type"] == "text" and spec.get("max_length", 20000) <= 300)
-            }
-            for field in sorted(indexed):
-                column = f"json_extract(data, '$.{field}')"
-                connection.execute(
-                    f'CREATE INDEX IF NOT EXISTS "field_{field}" ON records (type, {column}, id) '
-                    f"WHERE {column} IS NOT NULL AND deleted_at IS NULL")
             # Databases from before agents were named gain the column, empty for old rows.
             for table in ("events", "views"):
                 if "agent" not in [row["name"] for row in connection.execute(f"PRAGMA table_info({table})")]:
@@ -258,6 +299,8 @@ class WorldStore:
                 raise ValueError(f"{self.path} holds the {saved} world, not {self.definition.name}.")
             if "world" not in meta:
                 connection.execute("INSERT INTO world_meta (key, value) VALUES ('world', ?)", (saved,))
+            self._settle_definition(connection, meta, new="seed_version" not in meta)
+            self._create_indexes(connection)
             if "refs" not in meta:
                 # Databases from before references were indexed are indexed once here.
                 for row in connection.execute("SELECT * FROM records WHERE deleted_at IS NULL").fetchall():
@@ -275,6 +318,77 @@ class WorldStore:
                     "evidence": [{"source": f"worlds.{self.definition.name}", "version": 1}],
                 }, None, record)
             connection.execute("INSERT INTO world_meta (key, value) VALUES ('seed_version', '1')")
+
+    def _create_indexes(self, connection: sqlite3.Connection) -> None:
+        # One index per field name, shared by every type that has the field, so that a lookup by
+        # value does not read every record. An index per type and field would mean thousands
+        # of indexes in a large world, and every write pays for each one.
+        indexed = {
+            field for definition in self.types.values() for field, spec in definition["fields"].items()
+            if spec["type"] in ("reference", "enum", "date", "integer") or (spec["type"] == "text" and spec.get("max_length", 20000) <= 300)
+        }
+        for field in sorted(indexed):
+            column = f"json_extract(data, '$.{field}')"
+            connection.execute(
+                f'CREATE INDEX IF NOT EXISTS "field_{field}" ON records (type, {column}, id) '
+                f"WHERE {column} IS NOT NULL AND deleted_at IS NULL")
+
+    def _settle_definition(self, connection: sqlite3.Connection, meta: dict[str, str], *, new: bool) -> None:
+        """Decide which definition the world runs: the one it holds, or the one it was started with.
+
+        A world created before definitions were kept takes the one it was started with as its first.
+        After that, a changed start-up definition is applied as a change by system, unless the world's
+        definition has also been changed while it ran. Then neither is discarded: the world will not start,
+        unless from_file says to apply the start-up one over it.
+        """
+        given = self.definition.as_data()
+        fingerprint = hashlib.sha256(json.dumps(given, sort_keys=True).encode()).hexdigest()
+        latest = connection.execute("SELECT * FROM definitions ORDER BY revision DESC LIMIT 1").fetchone()
+        if latest is None:
+            reason = "The world's first definition." if new else "The definition the world ran when it began keeping them."
+            self._save_definition(connection, 1, "system", None, reason, "First definition.", given)
+            self._started_with(connection, fingerprint, 1)
+            self._revision = 1
+            return
+        self._adopt(self._held(json.loads(latest["definition"])), latest["revision"])
+        if meta.get("definition_file") == fingerprint:
+            return
+        if given == json.loads(latest["definition"]):
+            self._started_with(connection, fingerprint, latest["revision"])
+            return
+        if latest["revision"] != int(meta.get("definition_file_revision", "0")) and not self._from_file:
+            raise ValueError(
+                f"{self.path} has had its definition changed while it ran, to revision {latest['revision']}, and the "
+                "definition it was started with has changed too. Start it with the definition it holds, from "
+                "GET /api/definition, or apply the new one over it with --world-from-file.")
+        try:
+            staged, _, _ = self._change(connection, None, given, None, None, "The definition the world is started with changed.", None)
+        except WorldError as error:
+            raise ValueError(f"The definition {self.path} was started with cannot be applied. {error.message} "
+                             f"{json.dumps(error.details)}") from None
+        self._adopt(staged.definition, staged._revision)
+        self._started_with(connection, fingerprint, staged._revision)
+
+    @staticmethod
+    def _started_with(connection: sqlite3.Connection, fingerprint: str, revision: int) -> None:
+        connection.executemany("INSERT OR REPLACE INTO world_meta (key, value) VALUES (?, ?)",
+                               [("definition_file", fingerprint), ("definition_file_revision", str(revision))])
+
+    def _follow(self, connection: sqlite3.Connection) -> None:
+        """Run a definition another process has changed since this one last looked."""
+        latest = connection.execute("SELECT revision, definition FROM definitions ORDER BY revision DESC LIMIT 1").fetchone()
+        if latest is not None and latest["revision"] != self._revision:
+            self._adopt(self._held(json.loads(latest["definition"])), latest["revision"])
+
+    @staticmethod
+    def _save_definition(
+        connection: sqlite3.Connection, revision: int, actor_id: str, agent: str | None, reason: str,
+        summary: str, data: dict[str, Any],
+    ) -> None:
+        latest = connection.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()[0]
+        connection.execute(
+            "INSERT INTO definitions (revision, at, actor, agent, reason, summary, definition, after_event) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (revision, _now(), actor_id, agent, reason, summary, _json(data), latest))
 
     @staticmethod
     def _decode(row: sqlite3.Row) -> dict[str, Any]:
@@ -430,6 +544,18 @@ class WorldStore:
     ) -> bool:
         return self._holds(connection, self.types[record["type"]]["rules"]["read"], actor, record, record)
 
+    def _may_read(self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any]) -> bool:
+        """Whether the actor may read a record, judged by the last definition that had its type if it has been removed."""
+        if record["type"] in self.types:
+            return self._can_read(connection, actor, record)
+        for row in connection.execute("SELECT revision, definition FROM definitions ORDER BY revision DESC"):
+            data = json.loads(row["definition"])
+            if record["type"] in data["types"]:
+                then = copy.copy(self)
+                then._adopt(self._held(data), row["revision"])
+                return then._can_read(connection, actor, record)
+        return False
+
     def _can_update(
         self, connection: sqlite3.Connection, actor: dict[str, Any], record: dict[str, Any],
     ) -> bool:
@@ -553,6 +679,8 @@ class WorldStore:
                 "actor": self._public(connection, actor, actor),
                 "query": {"operators": ["eq", "ne", "contains", "lt", "lte", "gt", "gte", "in"], "combine": "and"},
                 "mutations": {"concurrency": "expected_version is required for update and delete"},
+                "definition": {"revision": self._revision, "capabilities": {
+                    "define": self._may_define(connection, actor), "rules": deepcopy(self.definition.rules)}},
             }
             if only is None and len(self.types) > INDEX_ABOVE:
                 return {**shared, "type_index": {name: definition["description"] for name, definition in self.types.items()}}
@@ -1071,6 +1199,238 @@ class WorldStore:
                 results.append(record)
             return results
 
+    def definition_at(self, actor_id: str, revision: Any = None) -> dict[str, Any]:
+        """The definition the world runs, or an earlier revision of it, with who made it and why."""
+        with self._transaction() as connection:
+            self._actor(connection, actor_id)
+            if revision is None:
+                row = connection.execute("SELECT * FROM definitions ORDER BY revision DESC LIMIT 1").fetchone()
+            elif type(revision) is int:
+                row = connection.execute("SELECT * FROM definitions WHERE revision = ?", (revision,)).fetchone()
+            else:
+                row = None
+            if row is None:
+                raise WorldError(404, "not_found", "There is no such revision of the definition.", {"revision": self._revision})
+            return {"revision": row["revision"], "at": row["at"], "by": row["actor"], "agent": row["agent"],
+                    "reason": row["reason"], "summary": row["summary"], "definition": json.loads(row["definition"])}
+
+    def _may_define(self, connection: sqlite3.Connection, actor: dict[str, Any]) -> bool:
+        rule = self.definition.rules.get("define")
+        return bool(rule) and self._holds(connection, rule, actor, None, None)  # type: ignore[arg-type]
+
+    def define(self, actor_id: str, change: Any, *, agent: str | None = None) -> dict[str, Any]:
+        """Change the world's definition while it runs. See docs/changing-a-world.md.
+
+        `types` replaces or adds each type it names, or removes it when given null. `rename` carries a field's
+        values to its new name, and `values` an enum's values to new ones. The change is refused, and nothing is
+        saved, if any live record would not fit it. With `check`, nothing is saved either way.
+        """
+        keys = {"types", "rename", "values", "rules", "title", "expected_revision", "reason", "check"}
+        if not isinstance(change, dict) or set(change) - keys:
+            raise WorldError(400, "invalid_definition", "That is not a change to the definition.", {"expected": DEFINE_HELP})
+        reason = change.get("reason", "No reason given.")
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 4000:
+            raise WorldError(422, "invalid_provenance", "reason must be nonempty text of at most 4000 characters.")
+        try:
+            with self._transaction(write=True) as connection:
+                actor = self._actor(connection, actor_id)
+                rule = self.definition.rules.get("define")
+                if not self._may_define(connection, actor):
+                    raise WorldError(403, "permission_denied", "This actor is not allowed to change the definition."
+                                     if rule else "No one may change this world's definition while it runs.", {"rule": rule})
+                expected = change.get("expected_revision")
+                if type(expected) is not int:
+                    raise WorldError(428, "revision_required", "expected_revision must be the definition's revision, from describe.",
+                                     {"current_revision": self._revision})
+                if expected != self._revision:
+                    raise WorldError(409, "revision_conflict", "The definition changed since it was read. Read it again.",
+                                     {"expected_revision": expected, "current_revision": self._revision})
+                data = self.definition.as_data()
+                given = change.get("types", {})
+                if not isinstance(given, dict):
+                    raise WorldError(422, "invalid_definition", "types maps each type to its whole definition, or to null to remove it.")
+                for type_name, spec in given.items():
+                    if spec is None and type_name not in data["types"]:
+                        raise WorldError(422, "invalid_definition", f"There is no type {type_name} to remove.", {"types": list(data["types"])})
+                    if spec is None:
+                        del data["types"][type_name]
+                    else:
+                        data["types"][type_name] = deepcopy(spec)
+                if "rules" in change:
+                    data["rules"] = deepcopy(change["rules"])
+                if "title" in change:
+                    data["title"] = change["title"]
+                if data == self.definition.as_data() and not change.get("rename") and not change.get("values"):
+                    return {"revision": self._revision, "summary": "No change.", "records": {}, "saved": False}
+                staged, summary, records = self._change(connection, actor, data, change.get("rename"), change.get("values"), reason, agent)
+                if not staged._may_define(connection, staged._actor(connection, actor_id)):
+                    raise WorldError(409, "define_locked_out", f"After this change, {actor_id} could no longer change the "
+                                     "definition, so it was refused.", {"rule": staged.definition.rules.get("define")})
+                result = {"revision": staged._revision, "summary": summary, "records": records}
+                if change.get("check") is True:
+                    raise _Checked({**result, "saved": False})
+        except _Checked as checked:
+            return checked.result
+        self._adopt(staged.definition, staged._revision)
+        return {**result, "saved": True}
+
+    def _change(
+        self, connection: sqlite3.Connection, actor: dict[str, Any] | None, data: dict[str, Any],
+        rename: Any, values: Any, reason: str, agent: str | None,
+    ) -> tuple["WorldStore", str, dict[str, dict[str, int]]]:
+        """Save a new definition in this transaction, and rewrite the records it changes.
+
+        Returns a copy of this store that runs the new definition, a summary, and how many records of each
+        changed type were checked and rewritten. Raises if any live record would not fit, so the caller's
+        transaction saves nothing.
+        """
+        try:
+            new = self._held(data)
+            new.check()
+        except RuleError as error:
+            raise WorldError(422, "invalid_definition", str(error)) from None
+        if new.name != self.definition.name:
+            raise WorldError(422, "invalid_definition", f"A world keeps its name, {self.definition.name}.")
+        if new.actor_type != self.definition.actor_type:
+            raise WorldError(422, "invalid_definition", f"The people who act stay {self.definition.actor_type}.")
+        old, types = self.types, new.types
+        renamed, mapped = self._renames(rename, old, types), self._value_maps(values, types)
+        for type_name in sorted(set(old) - set(types)):
+            live = self._all(connection, type_name, limit=21)
+            if live:
+                raise WorldError(409, "type_in_use", f"{type_name} still has records. Delete them before removing the type.",
+                                 {"type": type_name, "records": [record["id"] for record in live[:20]], "more": len(live) > 20})
+        staged = copy.copy(self)
+        staged._adopt(new, self._revision + 1)
+        actor_id = actor["id"] if actor else "system"
+        summary = self._summary(self.definition, new, renamed, mapped)
+        self._save_definition(connection, staged._revision, actor_id, agent, reason, summary, new.as_data())
+        staged._create_indexes(connection)
+        provenance = {"requested_by": actor_id, "reason": f"Definition revision {staged._revision}: {reason}",
+                      "evidence": [], "agent": agent}
+        problems: dict[tuple[str, str, str], tuple[WorldError, list[str]]] = {}
+        records: dict[str, dict[str, int]] = {}
+        changed = sorted(name for name in types if name in old and (types[name] != old[name] or name in mapped))
+        for type_name in changed:
+            counts = records.setdefault(type_name, {"checked": 0, "rewritten": 0})
+            for record in self._all(connection, type_name):
+                counts["checked"] += 1
+                fields = dict(record["data"])
+                for was, now in renamed.get(type_name, {}).items():
+                    if was in fields:
+                        fields[now] = fields.pop(was)
+                for field, mapping in mapped.get(type_name, {}).items():
+                    value = fields.get(field)
+                    if isinstance(value, list):
+                        fields[field] = [mapping.get(item, item) if isinstance(item, str) else item for item in value]
+                    elif isinstance(value, str):
+                        fields[field] = mapping.get(value, value)
+                fields = {field: value for field, value in fields.items() if field in types[type_name]["fields"]}
+                try:
+                    fields = validate_data(types, type_name, fields)
+                    for field, target, target_id in references(types, type_name, fields):
+                        if self._raw(connection, target, target_id) is None:
+                            raise WorldError(422, "invalid_reference", f"{field} must point to a live {target}.",
+                                             {"field": field, "target": target})
+                except WorldError as error:
+                    problems.setdefault((type_name, error.code, error.message), (error, []))[1].append(record["id"])
+                    continue
+                if fields != record["data"]:
+                    connection.execute("UPDATE records SET data = ?, version = version + 1, updated_at = ? WHERE type = ? AND id = ?",
+                                       (_json(fields), _now(), type_name, record["id"]))
+                    staged._audit(connection, "update", actor_id, provenance, record, staged._raw(connection, type_name, record["id"]))
+                    counts["rewritten"] += 1
+                staged._index_references(connection, {**record, "data": fields})
+        # A new constraint, or a record rewritten, may leave a constraint unmet anywhere, even on a type
+        # the change did not name, since a constraint may count the records of any type.
+        if any(counts["rewritten"] for counts in records.values()) or any(
+                old.get(name, {}).get("constraints") != spec.get("constraints") for name, spec in types.items()):
+            judge = staged._raw(connection, new.actor_type, actor_id) if actor else None
+            for type_name, spec in types.items():
+                checks = [constraint for constraint in spec.get("constraints", []) if "update" in constraint.get("on", ("create", "update"))]
+                for record in staged._all(connection, type_name) if checks else []:
+                    for constraint in checks:
+                        if not staged._holds(connection, constraint["check"], judge, record, record):
+                            error = WorldError(constraint.get("status", 422), constraint.get("code", "constraint_failed"),
+                                               constraint["message"], {"constraint": constraint["check"]})
+                            problems.setdefault((type_name, error.code, error.message), (error, []))[1].append(record["id"])
+                            break
+        if problems:
+            (type_name, _, _), (error, ids) = next(iter(problems.items()))
+            raise WorldError(409, "definition_refused", f"{len(ids)} {type_name} record{'' if len(ids) == 1 else 's'} would not fit "
+                             f"the new definition, so nothing changed. {error.message}",
+                             {**error.details, "type": type_name, "code": error.code, "records": ids[:20],
+                              "more": max(0, len(ids) - 20), "other_problems": len(problems) - 1})
+        return staged, summary, records
+
+    @staticmethod
+    def _renames(rename: Any, old: dict[str, Any], types: dict[str, Any]) -> dict[str, dict[str, str]]:
+        """{"Type.old": "new"} as {type: {old: new}}, refused unless each names a field that moves to a new name."""
+        if not rename:
+            return {}
+        if not isinstance(rename, dict):
+            raise WorldError(422, "invalid_rename", 'rename is {"Type.old_field": "new_field"}.')
+        found: dict[str, dict[str, str]] = {}
+        for key, now in rename.items():
+            type_name, _, was = key.partition(".")
+            if type_name not in old or type_name not in types or was not in old[type_name]["fields"]:
+                raise WorldError(422, "invalid_rename", f"{key} is not a field of the world as it is.")
+            if not isinstance(now, str) or now not in types[type_name]["fields"]:
+                raise WorldError(422, "invalid_rename", f"{key} is renamed to {now!r}, which the new {type_name} does not have.")
+            if was in types[type_name]["fields"] or now in old[type_name]["fields"]:
+                raise WorldError(422, "invalid_rename", f"{key} can be renamed to {now} only if {type_name} keeps neither "
+                                 "the old name nor an existing field by the new one.")
+            found.setdefault(type_name, {})[was] = now
+        return found
+
+    @staticmethod
+    def _value_maps(values: Any, types: dict[str, Any]) -> dict[str, dict[str, dict[str, str]]]:
+        """{"Type.field": {"old": "new"}} as {type: {field: {old: new}}}, each new value one the field allows."""
+        if not values:
+            return {}
+        if not isinstance(values, dict):
+            raise WorldError(422, "invalid_values", 'values is {"Type.field": {"old value": "new value"}}.')
+        found: dict[str, dict[str, dict[str, str]]] = {}
+        for key, mapping in values.items():
+            type_name, _, field = key.partition(".")
+            spec = types.get(type_name, {}).get("fields", {}).get(field)
+            if spec and spec["type"] == "list":
+                spec = spec["items"]
+            if not spec or spec["type"] != "enum":
+                raise WorldError(422, "invalid_values", f"{key} is not an enum field of the new definition.")
+            if not isinstance(mapping, dict) or not all(isinstance(value, str) and value in spec["values"] for value in mapping.values()):
+                raise WorldError(422, "invalid_values", f"{key} maps each old value to one of {', '.join(spec['values'])}.")
+            found.setdefault(type_name, {})[field] = mapping
+        return found
+
+    @staticmethod
+    def _summary(before: Definition, after: Definition, renamed: dict[str, dict[str, str]],
+                 mapped: dict[str, dict[str, dict[str, str]]]) -> str:
+        """What a change did, as sentences a person can read in the audit."""
+        old, new = before.types, after.types
+        parts = [f"Added type {name}." for name in new if name not in old]
+        parts += [f"Removed type {name}." for name in old if name not in new]
+        for name, now in new.items():
+            was = old.get(name)
+            if was is None or (was == now and name not in mapped):
+                continue
+            moved = renamed.get(name, {})
+            notes = [f"renamed {field} to {to}" for field, to in moved.items()]
+            notes += [f"added field {field}" for field in now["fields"] if field not in was["fields"] and field not in moved.values()]
+            notes += [f"removed field {field}" for field in was["fields"] if field not in now["fields"] and field not in moved]
+            notes += [f"changed field {field}" for field in now["fields"]
+                      if field in was["fields"] and now["fields"][field] != was["fields"][field]]
+            notes += [f"{field} value {a} became {b}" for field, mapping in mapped.get(name, {}).items() for a, b in mapping.items()]
+            for key, label in (("rules", "rules"), ("constraints", "constraints"), ("description", "description")):
+                if now.get(key) != was.get(key):
+                    notes.append(f"changed {label}")
+            parts.append(f"{name}: {', '.join(notes) or 'changed'}.")
+        if before.rules != after.rules:
+            parts.append("Changed who may change the definition.")
+        if before.title != after.title:
+            parts.append(f"Renamed the world {after.title}.")
+        return " ".join(parts) or "No change."
+
     def history(
         self, actor_id: str, type_name: str, record_id: str, *, agent: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -1105,9 +1465,10 @@ class WorldStore:
         if row["action"] == "create":
             what = "; ".join(f"{field} {self._shown(value)}" for field, value in after.items() if value not in (None, "", []))
         elif row["action"] == "update":
+            # A field a definition change removed is in before only.
             what = "; ".join(
-                f"{field} from {self._shown(before.get(field))} to {self._shown(value)}"
-                for field, value in after.items() if value != before.get(field)
+                f"{field} from {self._shown(before.get(field))} to {self._shown(after.get(field))}"
+                for field in [*after, *(field for field in before if field not in after)] if after.get(field) != before.get(field)
             ) or "no field changed"
         else:
             what = ""
@@ -1151,6 +1512,12 @@ class WorldStore:
             ] + [
                 (row["after_event"], 1, row["at"], 1, row["id"], row["at"], who(row), f"{row['action']} access", row["type"], row["record_id"], row["detail"])
                 for row in connection.execute(f"SELECT * FROM access{where} ORDER BY id DESC LIMIT ?", (*params, limit))
+            ] + [
+                # A change to the definition, which everyone may read, as they may read it through describe.
+                (row["after_event"], 1, row["at"], 2, row["revision"], row["at"], who(row), "changed definition", "World",
+                 str(row["revision"]), f"{row['summary']} Reason: {' '.join(row['reason'].split())}")
+                for row in (connection.execute("SELECT * FROM definitions WHERE revision > 1 ORDER BY revision DESC LIMIT ?", (limit,))
+                            if type_name is None else [])
             ]
             readable: dict[tuple[str, str], bool] = {}
             lines = []
@@ -1159,8 +1526,8 @@ class WorldStore:
             for *_, at, who, verb, kind, identifier, detail in sorted(entries)[-limit:]:
                 key = (kind, identifier)
                 if key not in readable:
-                    record = self._raw(connection, kind, identifier, include_deleted=True)
-                    readable[key] = bool(record and self._can_read(connection, actor, record))
+                    record = None if kind == "World" else self._raw(connection, kind, identifier, include_deleted=True)
+                    readable[key] = kind == "World" or bool(record and self._may_read(connection, actor, record))
                 if readable[key]:
                     lines.append(f"{at}  {who}  {verb}  {kind} {identifier}  {detail}")
             return lines
