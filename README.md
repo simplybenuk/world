@@ -189,7 +189,11 @@ With both set, `/.well-known/oauth-protected-resource/mcp` tells a connector
 where to sign in. The authorization server uses its key at `/api/access`:
 `POST {"actor", "agent", "expires_in"}` issues a token, `GET ?actor=` lists who
 has given which agents access, and `DELETE {"actor", "agent"}` revokes. A token
-is valid only for the world that issued it.
+is valid only for the world that issued it. An optional `"identity"` binds a
+persistent agent ID independently of the software name. Rules can check
+`caller.identity` and `caller.agent`, and author fields can default to
+`"$identity"`. Renewal must preserve the binding; revoke the grant before
+changing it. See [authenticated callers](docs/writing-a-world.md#authenticated-callers-and-resource-limits).
 
 Access lasts until it is revoked, and its tokens come and go under it. The
 first token gives access. Later ones renew it, however long after the last one

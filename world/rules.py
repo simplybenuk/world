@@ -25,6 +25,8 @@ from datetime import date, datetime, timezone
 from functools import lru_cache
 from typing import Any, Callable
 
+from .caller import Caller, current, spend
+
 
 class RuleError(ValueError):
     """A rule that this language cannot express. Raised when a definition loads."""
@@ -105,7 +107,7 @@ def parse(expression: str, types: tuple[str, ...]) -> ast.expr:
         tree = ast.parse(expression, mode="eval").body
     except SyntaxError as error:
         raise RuleError(f"Cannot parse rule: {expression}") from error
-    _check(tree, expression, set(types), {"actor", "record", "saved"})
+    _check(tree, expression, set(types), {"actor", "record", "saved", "caller"})
     return tree
 
 
@@ -124,6 +126,8 @@ def _check(node: ast.AST, source: str, types: set[str], names: set[str]) -> None
         for value in (node.left, *node.comparators):
             _check(value, source, types, names)
     elif isinstance(node, ast.Attribute):
+        if isinstance(node.value, ast.Name) and node.value.id == "caller" and node.attr not in {"identity", "agent"}:
+            bad("This caller field")
         _check(node.value, source, types, names)
     elif isinstance(node, ast.Name):
         if node.id not in names:
@@ -169,12 +173,13 @@ class Evaluation:
         can_read: Callable[[Node], bool] | None = None,
     ) -> None:
         self.world, self.can_read = world, can_read
-        self.names = {"actor": actor, "record": record, "saved": saved}
+        self.names = {"actor": actor, "record": record, "saved": saved, "caller": current()}
 
     def run(self, expression: str) -> Any:
         return self._value(parse(expression, tuple(self.world.types)), self.names)
 
     def _value(self, node: ast.AST, names: dict[str, Any]) -> Any:
+        spend()
         if isinstance(node, ast.Constant):
             return node.value
         if isinstance(node, ast.Name):
@@ -185,7 +190,7 @@ class Evaluation:
             owner = self._value(node.value, names)
             if owner is UNKNOWN or owner is None:
                 return owner
-            if not isinstance(owner, Node):
+            if not isinstance(owner, (Node, Caller)):
                 raise RuleError(f"Cannot read .{node.attr} of a plain value.")
             return owner.field(node.attr)
         if isinstance(node, ast.UnaryOp):

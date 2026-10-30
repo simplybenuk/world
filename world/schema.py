@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+
+from .caller import current
 from datetime import date
 import re
 from typing import Any, Iterator
@@ -103,7 +105,7 @@ def validate_data(
                 continue
             if "default" in spec:
                 default = spec["default"]
-                validated[field] = actor_id if default == "$actor" else deepcopy(default)
+                validated[field] = actor_id if default == "$actor" else current().identity if default == "$identity" else deepcopy(default)
             elif spec.get("required"):
                 raise WorldError(422, "required_field", f"{field} is required.", {"field": field, "spec": spec})
             else:

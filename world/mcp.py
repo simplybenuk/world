@@ -183,6 +183,8 @@ def handle(handler, method):
     try:
         actor_id = handler._actor()
     except ClientError as error:
+        if error.status != 401:
+            return handler._respond(error.status, _error(request_id, -32000, error.message))
         presented = handler.headers.get("Authorization", "").startswith("Bearer ")
         return handler._respond(401, _error(request_id, -32000, error.message),
                                 headers={"WWW-Authenticate": handler.challenge("invalid_token" if presented else None)})
