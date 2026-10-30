@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 from client_gateway.planner import ClientError, CodexPlanner, strict_json
 from world import mcp
+from world.caller import bind, identity as checked_identity
 from world.store import WorldError, WorldStore
 import worlds
 
@@ -70,7 +71,7 @@ class AccessTokens:
         # revoked; its tokens may expire and be renewed under it. In agent-access.json:
         # {"grants": [[actor, agent, given_at or None]], "tokens": {token: [actor, agent, expires_at or None]}}
         self.agent_path = Path(data_dir) / "agent-access.json"
-        self.given, self.agents, self._agents_read = {}, {}, None
+        self.given, self.agents, self.bindings, self._agents_read = {}, {}, {}, None
         self._lock = threading.Lock()
         self._reload_agents()
 
@@ -94,13 +95,15 @@ class AccessTokens:
                 tokens = saved["tokens"]
                 given = {(actor, agent): given_at for actor, agent, given_at in saved["grants"]}
             self.agents, self.given, self._agents_read = tokens, given, changed
+            self.bindings = {(actor, agent): value for actor, agent, value in saved.get("identities", [])} if "tokens" in saved else {}
 
     def _save_agents(self):
         now = time.time()
         self.agents = {token: issued for token, issued in self.agents.items()
                        if (issued[2] is None or issued[2] > now) and tuple(issued[:2]) in self.given}
         saved = {"grants": [[actor, agent, given_at] for (actor, agent), given_at in sorted(self.given.items())],
-                 "tokens": self.agents}
+                 "tokens": self.agents,
+                 "identities": [[actor, agent, value] for (actor, agent), value in sorted(self.bindings.items()) if (actor, agent) in self.given]}
         partial = self.agent_path.with_name(self.agent_path.name + ".partial")
         descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(descriptor, "w") as stream:
@@ -124,14 +127,19 @@ class AccessTokens:
                 return actor, agent
         return None, None
 
+    def principal(self, token):
+        with self._lock:
+            actor, agent = self.identify(token)
+            return actor, agent, self.bindings.get((actor, agent)) if actor and agent else None
+
     def actor_for(self, token):
         return self.identify(token)[0]
 
-    def issue(self, actor, agent, expires_in=None, *, seeded=True):
+    def issue(self, actor, agent, expires_in=None, *, seeded=True, identity=None):
         """A token that acts as this actor and is recorded as this agent, giving the agent access if it had none."""
-        return self.give(actor, agent, expires_in, seeded=seeded)[0]
+        return self.give(actor, agent, expires_in, seeded=seeded, identity=identity)[0]
 
-    def give(self, actor, agent, expires_in=None, *, seeded=True, renew=False):
+    def give(self, actor, agent, expires_in=None, *, seeded=True, renew=False, identity=None):
         """(token, new): a token for this agent to act as this actor, and whether this gave it access it did not have.
 
         Without expires_in, reissuing returns the same token. With it, every call gives a new token that
@@ -146,13 +154,17 @@ class AccessTokens:
             raise ValueError("An agent name is up to 64 letters, digits, dots, hyphens, or underscores.")
         if expires_in is not None and (type(expires_in) is not int or not 60 <= expires_in <= 366 * 86400):
             raise ValueError("expires_in is a whole number of seconds from 60 to a year.")
+        checked_identity(identity)
         with self._lock:
             self._reload_agents()  # another process may have issued tokens since
             new = (actor, agent) not in self.given
             if new and renew:
                 raise LookupError("This agent has no access to renew. It was revoked or never given.")
+            if not new and self.bindings.get((actor, agent)) != identity:
+                raise ValueError("An existing grant cannot change identity. Revoke it before connecting a different identity.")
             if new:
                 self.given[(actor, agent)] = round(time.time())
+                self.bindings[(actor, agent)] = identity
             elif expires_in is None:
                 for token, issued in self.agents.items():
                     if issued == [actor, agent, None]:
@@ -183,6 +195,8 @@ class AccessTokens:
                 expires_at = self.agents.pop(credential)[2]
                 working += expires_at is None or expires_at > now
             ended = [[actor, agent]] if token is None and self.given.pop((actor, agent), False) is not False else []
+            if ended:
+                self.bindings.pop((actor, agent), None)
             if stopped or ended:
                 self._save_agents()
             return working, ended
@@ -202,7 +216,7 @@ class AccessTokens:
             live = [expires_at for token_actor, token_agent, expires_at in self.agents.values()
                     if (token_actor, token_agent) == (issued_actor, agent) and (expires_at is None or expires_at > now)]
             found.append({"actor": issued_actor, "agent": agent, "given_at": given_at, "tokens": len(live),
-                          "expires_at": None if not live or None in live else max(live)})
+                          "expires_at": None if not live or None in live else max(live), "identity": self.bindings.get((issued_actor, agent))})
         return found
 
     def issuer_key(self, create=False):
@@ -219,8 +233,15 @@ class WorldHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     request_queue_size = 256  # the default of 5 resets connections when many clients arrive at once
 
-    def __init__(self, address, store, access, planner=None, meter=None, public_url=None, authorization_server=None):
+    def __init__(self, address, store, access, planner=None, meter=None, public_url=None, authorization_server=None, identity_rate_limit=None, rule_step_limit=100000):
         self.store = store
+        if identity_rate_limit is not None and (type(identity_rate_limit) is not int or identity_rate_limit < 1):
+            raise ValueError("identity_rate_limit must be a positive integer.")
+        if type(rule_step_limit) is not int or rule_step_limit < 1:
+            raise ValueError("rule_step_limit must be a positive integer.")
+        self.rule_step_limit = rule_step_limit
+        self.identity_rate_limit = identity_rate_limit
+        self._identity_requests, self._identity_lock = {}, threading.Lock()
         # Where this world is reached, and where an MCP client signs in for a token (OAuth). Both or neither.
         self.public_url = public_url.rstrip("/") if public_url else None
         self.authorization_server = authorization_server
@@ -230,6 +251,19 @@ class WorldHTTPServer(ThreadingHTTPServer):
         self.planner = planner
         self.meter = meter  # called with (method, path, status, response bytes) for measurement
         super().__init__(address, WorldHandler)
+
+    def check_identity_rate(self, actor, identity):
+        """A fixed minute window shared by every token and connection for an identity."""
+        if identity is None or self.identity_rate_limit is None:
+            return
+        minute = int(time.monotonic() // 60)
+        with self._identity_lock:
+            self._identity_requests = {key: value for key, value in self._identity_requests.items() if value[0] == minute}
+            key = (actor, identity)
+            _, count = self._identity_requests.get(key, (minute, 0))
+            if count >= self.identity_rate_limit:
+                raise ClientError(429, "rate_limited", "This identity has reached its request limit. Try again next minute.")
+            self._identity_requests[key] = (minute, count + 1)
 
 
 class WorldHandler(BaseHTTPRequestHandler):
@@ -256,7 +290,12 @@ class WorldHandler(BaseHTTPRequestHandler):
         logging.info("%s request finished", self.command)
 
     def _dispatch(self, method):
+        with self.server.store.as_caller(rule_steps=self.server.rule_step_limit):
+            return self._dispatch_request(method)
+
+    def _dispatch_request(self, method):
         self.agent = None
+        self.identity = None
         try:
             self.connection.settimeout(150)
             split = urlsplit(self.path)
@@ -277,9 +316,11 @@ class WorldHandler(BaseHTTPRequestHandler):
                 self._check_origin()
             if path == "/api/session" and method == "POST":
                 token = body.get("token")
-                actor_id = self.server.access.actor_for(token)
+                actor_id, self.agent, self.identity = self.server.access.principal(token)
+                bind(agent=self.agent, identity=self.identity)
                 if not actor_id:
                     raise ClientError(401, "invalid_token", "That sign-in token is not valid.")
+                self.server.check_identity_rate(actor_id, self.identity)
                 actor = self.server.store.get_record(actor_id, self.server.store.definition.actor_type, actor_id)
                 return self._respond(200, {"actor": actor}, cookie=self._cookie(token))
             if path == "/api/session" and method == "DELETE":
@@ -427,16 +468,17 @@ class WorldHandler(BaseHTTPRequestHandler):
                 raise ClientError(422, "unknown_actor", "No one in this world has that id.")
             by, via = self._granter(body, actor)
             try:
-                token, new = access.give(actor, agent, expires_in, seeded=False, renew=body.get("renew") is True)
+                token, new = access.give(actor, agent, expires_in, seeded=False, renew=body.get("renew") is True, identity=body.get("identity"))
             except ValueError as error:
                 raise ClientError(422, "invalid_access", str(error)) from None
             except LookupError as error:
                 raise ClientError(409, "no_access", str(error)) from None
             if new:  # renewing is not new access, so it adds no line, however long since the last token
-                self.server.store.record_access(by, "gave", actor, agent, "", by_agent=via)
-            issued = {"access_token": token, "token_type": "Bearer", "actor": actor, "agent": agent}
+                self.server.store.record_access(by, "gave", actor, agent, ("as " + body["identity"]) if body.get("identity") else "", by_agent=via)
+            issued = {"access_token": token, "token_type": "Bearer", "actor": actor, "agent": agent, "identity": body.get("identity")}
             return self._respond(201, {**issued, **({"expires_in": expires_in} if expires_in is not None else {})})
         if method == "DELETE":
+            identities = {(grant["actor"], grant["agent"]): grant["identity"] for grant in access.grants()}
             if isinstance(body.get("token"), str):
                 by, via = self._granter(body, None)
                 stopped, ended = access.revoke(token=body["token"])  # one token; the access stands
@@ -446,7 +488,8 @@ class WorldHandler(BaseHTTPRequestHandler):
             else:
                 raise ClientError(422, "invalid_access", 'Name a "token", or an "actor" and an "agent".')
             for actor, agent in ended:
-                self.server.store.record_access(by or actor, "revoked", actor, agent, "", by_agent=via)
+                identity = identities.get((actor, agent))
+                self.server.store.record_access(by or actor, "revoked", actor, agent, ("as " + identity) if identity else "", by_agent=via)
             return self._respond(200, {"revoked": stopped, "ended": len(ended)})
         raise ClientError(405, "method_not_allowed", "Use GET, POST, or DELETE.")
 
@@ -469,9 +512,11 @@ class WorldHandler(BaseHTTPRequestHandler):
                 token = jar["world_session"].value if "world_session" in jar else None
             except cookies.CookieError:
                 token = None
-        actor_id, self.agent = self.server.access.identify(token)
+        actor_id, self.agent, self.identity = self.server.access.principal(token)
+        bind(agent=self.agent, identity=self.identity)
         if not actor_id:
             raise ClientError(401, "authentication_required", "Sign in with a server-issued token to open this world.")
+        self.server.check_identity_rate(actor_id, self.identity)
         return actor_id
 
     def _check_origin(self):
@@ -619,12 +664,18 @@ def main():
                         help="The URL this world is reached at, such as https://example.com; needed with --authorization-server")
     parser.add_argument("--authorization-server", default=os.environ.get("WORLD_AUTHORIZATION_SERVER"),
                         help="The OAuth authorization server where MCP clients sign in for a token to this world")
+    parser.add_argument("--rule-step-limit", type=int, default=100000, help="Maximum rule-expression steps per HTTP or MCP request, including query and batch work")
+    parser.add_argument("--identity-rate-limit", type=int, help="Maximum authenticated requests per minute for each persistent identity, across its tokens")
     parser.add_argument("--world-from-file", action="store_true",
                         help="Apply the --world definition even if the world's definition was changed while it ran")
     parser.add_argument("--codex", action="store_true",
                         help="Let the reference client ask Codex on this host to plan views, on this host's Codex account. "
                         "Setting WORLD_CODEX_BIN does the same. Off otherwise: World provides no model")
     args = parser.parse_args()
+    if args.rule_step_limit < 1:
+        parser.error("--rule-step-limit must be positive.")
+    if args.identity_rate_limit is not None and args.identity_rate_limit < 1:
+        parser.error("--identity-rate-limit must be positive.")
     definition = worlds.load(args.world)
     default_dir = DEFAULT_DATA_DIR if definition.name == "team" else DEFAULT_DATA_DIR / definition.name
     data_dir = (args.data_dir or default_dir).expanduser().resolve()
@@ -664,7 +715,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     planner = CodexPlanner() if args.codex or os.environ.get("WORLD_CODEX_BIN") else None
     server = WorldHTTPServer((args.host, args.port), store, access, planner, public_url=args.public_url,
-                             authorization_server=args.authorization_server)
+                             authorization_server=args.authorization_server, identity_rate_limit=args.identity_rate_limit, rule_step_limit=args.rule_step_limit)
     logging.info("%s world listening on %s:%s; data in %s", args.world, args.host, args.port, data_dir)
     try:
         server.serve_forever()

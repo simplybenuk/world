@@ -16,6 +16,7 @@ from typing import Any, Iterator
 from uuid import uuid4
 
 from . import rules
+from .caller import as_caller, current
 from .definition import DataDefinition, Definition
 from .rules import RuleError
 from .schema import WorldError, references, require_type, validate_data, validate_value
@@ -72,6 +73,7 @@ class WorldStore:
     # FULL waits for the disk on every commit, so a saved change survives a power cut.
     # NORMAL does not wait. The database stays consistent, but a power cut can lose the last moments.
     synchronous = "FULL"
+    as_caller = staticmethod(as_caller)
 
     def __init__(self, path: str | Path, definition: Definition | None = None, *, from_file: bool = False) -> None:
         """Open or create the world at path. The definition creates a new world. An existing world runs the
@@ -289,6 +291,9 @@ class WorldStore:
             for table in ("events", "views"):
                 if "agent" not in [row["name"] for row in connection.execute(f"PRAGMA table_info({table})")]:
                     connection.execute(f"ALTER TABLE {table} ADD COLUMN agent TEXT")
+            for table in ("events", "views", "access", "definitions"):
+                if "identity" not in [row["name"] for row in connection.execute(f"PRAGMA table_info({table})")]:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN identity TEXT")
         finally:
             connection.close()
         with self._transaction(write=True) as connection:
@@ -387,8 +392,8 @@ class WorldStore:
     ) -> None:
         latest = connection.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()[0]
         connection.execute(
-            "INSERT INTO definitions (revision, at, actor, agent, reason, summary, definition, after_event) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (revision, _now(), actor_id, agent, reason, summary, _json(data), latest))
+            "INSERT INTO definitions (revision, at, actor, agent, reason, summary, definition, after_event, identity) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (revision, _now(), actor_id, agent or current().agent, reason, summary, _json(data), latest, current().identity))
 
     @staticmethod
     def _decode(row: sqlite3.Row) -> dict[str, Any]:
@@ -676,7 +681,8 @@ class WorldStore:
             actor = self._actor(connection, actor_id)
             shared = {
                 "name": self.definition.title, "version": self.definition.version,
-                "actor": self._public(connection, actor, actor),
+                "actor": self._public(connection, actor, actor) if self._can_read(connection, actor, actor) else {"type": actor["type"], "id": actor["id"]},
+                "caller": {"agent": current().agent, "identity": current().identity},
                 "query": {"operators": ["eq", "ne", "contains", "lt", "lte", "gt", "gte", "in"], "combine": "and"},
                 "mutations": {"concurrency": "expected_version is required for update and delete"},
                 "definition": {"revision": self._revision, "capabilities": {
@@ -726,8 +732,8 @@ class WorldStore:
         now = _now()
         latest = connection.execute("SELECT COALESCE(MAX(id), 0) FROM events").fetchone()[0]
         connection.executemany(
-            "INSERT INTO views (type, record_id, at, actor, how, after_event, agent) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [(record["type"], record["id"], now, actor_id, how, latest, _agent(agent)) for record in records],
+            "INSERT INTO views (type, record_id, at, actor, how, after_event, agent, identity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [(record["type"], record["id"], now, actor_id, how, latest, _agent(agent or current().agent), current().identity) for record in records],
         )
         return records
 
@@ -859,10 +865,12 @@ class WorldStore:
             world = rules.World(self.types, lookup, lambda kind, terms=(): [
                 record for record in self._all(connection, kind, terms) if visible(record)])
             tree = None if where is None else rules.parse(where, tuple(self.types))
+            # A caller-supplied query must not turn an unreadable account into a field-value oracle.
+            query_actor = world.node(actor if visible(actor) else {"type": actor["type"], "id": actor["id"], "data": {}})
 
             def evaluation(record: dict[str, Any]) -> rules.Evaluation:
                 node = world.node(record)
-                return rules.Evaluation(world, world.node(actor), node, node, lambda target: True)
+                return rules.Evaluation(world, query_actor, node, node, lambda target: True)
 
             def matches(record: dict[str, Any]) -> bool:
                 if not all(self._matches(record, item) for item in filters):
@@ -873,7 +881,7 @@ class WorldStore:
                 # Let the indexes find candidates for the parts of the query that name exact values.
                 terms = [((item["field"],), "eq", item["value"]) for item in filters if item["op"] == "eq" and item["field"] in fields]
                 if tree is not None:
-                    terms += evaluation({"type": type_name, "id": "", "data": {}}).narrowing([tree], "record", {"actor": world.node(actor)})
+                    terms += evaluation({"type": type_name, "id": "", "data": {}}).narrowing([tree], "record", {"actor": query_actor, "caller": current()})
                 found, total, cursor, more = [], 0, after, False
                 while not more:
                     chunk = self._all(connection, type_name, terms, after=cursor, limit=500)
@@ -958,7 +966,7 @@ class WorldStore:
         if len(serialized) > 65536:
             raise WorldError(422, "invalid_provenance", "evidence is too large.")
         return {"requested_by": requester, "reason": reason, "evidence": json.loads(serialized),
-                "agent": _agent(provenance.get("agent"))}
+                "agent": _agent(current().agent or provenance.get("agent"))}
 
     def _insert(
         self, connection: sqlite3.Connection, type_name: str, record_id: str,
@@ -978,12 +986,12 @@ class WorldStore:
         after: dict[str, Any],
     ) -> None:
         connection.execute(
-            "INSERT INTO events (type, record_id, action, at, actor, requested_by, reason, evidence, before_state, after_state, agent) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO events (type, record_id, action, at, actor, requested_by, reason, evidence, before_state, after_state, agent, identity) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 after["type"], after["id"], action, after["updated_at"], actor_id,
                 provenance["requested_by"], provenance["reason"], _json(provenance["evidence"]),
-                _json(before) if before is not None else None, _json(after), provenance["agent"],
+                _json(before) if before is not None else None, _json(after), provenance["agent"], current().identity,
             ),
         )
 
@@ -1157,7 +1165,7 @@ class WorldStore:
             names: dict[str, str] = {}
 
             def resolve(value: Any) -> Any:
-                if isinstance(value, str) and value.startswith("$") and value != "$actor":
+                if isinstance(value, str) and value.startswith("$") and value not in {"$actor", "$identity"}:
                     if value[1:] not in names:
                         raise WorldError(422, "unknown_name", f"No earlier step is named {value[1:]}.", {"names": list(names)})
                     return names[value[1:]]
@@ -1211,7 +1219,7 @@ class WorldStore:
                 row = None
             if row is None:
                 raise WorldError(404, "not_found", "There is no such revision of the definition.", {"revision": self._revision})
-            return {"revision": row["revision"], "at": row["at"], "by": row["actor"], "agent": row["agent"],
+            return {"revision": row["revision"], "at": row["at"], "by": row["actor"], "agent": row["agent"], "identity": row["identity"],
                     "reason": row["reason"], "summary": row["summary"], "definition": json.loads(row["definition"])}
 
     def _may_define(self, connection: sqlite3.Connection, actor: dict[str, Any]) -> bool:
@@ -1442,7 +1450,7 @@ class WorldStore:
             return [
                 {
                     "id": row["id"], "type": row["type"], "record_id": row["record_id"],
-                    "action": row["action"], "at": row["at"], "actor": row["actor"], "agent": row["agent"],
+                    "action": row["action"], "at": row["at"], "actor": row["actor"], "agent": row["agent"], "identity": row["identity"],
                     "requested_by": row["requested_by"], "reason": row["reason"],
                     "evidence": json.loads(row["evidence"]),
                     "before": json.loads(row["before_state"]) if row["before_state"] is not None else None,
@@ -1498,7 +1506,7 @@ class WorldStore:
             if record_id is not None:
                 where, params = where + " AND record_id = ?", (type_name, record_id)
         verbs = {"create": "created", "update": "changed", "delete": "deleted"}
-        who = lambda row: row["actor"] + (f" via {row['agent']}" if row["agent"] else "")
+        who = lambda row: row["actor"] + (f" via {row['agent']}" if row["agent"] else "") + (f" as {row['identity']}" if row["identity"] else "")
         with self._transaction() as connection:
             actor = self._actor(connection, actor_id)
             if record_id is not None:

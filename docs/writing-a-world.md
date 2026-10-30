@@ -54,7 +54,7 @@ tool, or `POST /api/definition`, if the definition says who may:
 {"name": "clinic", "rules": {"define": "actor.role == 'admin'"}, "types": {...}}
 ```
 
-The `define` rule is judged with `actor` alone. Without it, no one may change
+The `define` rule is judged with `actor` and authenticated `caller` context, without a record. Without it, no one may change
 the definition while the world runs. A change replaces or removes whole types,
 and can rename fields and enum values so that records keep their values. It is
 refused, and nothing is saved, if any record would not fit the new definition,
@@ -110,7 +110,12 @@ sets `actor_type`.
 | `list` | list of `items` | `items`, `unique`, `max_items` |
 
 Every field accepts `required`, `nullable`, `default`, and `write_rule`. The
-default `"$actor"` is the ID of whoever creates the record.
+default `"$actor"` is the ID of whoever creates the record. `"$identity"` is the
+persistent identity bound to the authenticated connection, or `None` when none
+was bound. Neither default prevents a caller supplying a different value. Enforce
+authorship with a create rule such as
+`caller.identity is not None and record.author == caller.identity`, and protect
+later changes with `write_rule: "False"`.
 
 ### Rules
 
@@ -164,6 +169,8 @@ tree and walks the tree. It never runs it as Python.
 | `actor` | the person acting |
 | `record` | the record being judged |
 | `saved` | its stored state. `None` while it is being created |
+| `caller.identity` | optional persistent identity bound by the authorization server |
+| `caller.agent` | authenticated software or connection name, or `None` |
 
 - **Fields.** `record.state`, `actor.role`. Every record also has `id` and `type`.
 - **References.** A dot follows a reference to the record it names:
@@ -227,3 +234,29 @@ You do not write these. The engine works them out from the rules for each actor.
 - A text field of up to 300 characters, and every enum, date, integer, and
   reference, is indexed for exact matches. Searching part of a text reads every
   record of the type.
+
+## Authenticated callers and resource limits
+
+Only the authorization server's issuer key may bind an identity to an agent
+connection through `POST /api/access`. Identity and display name are separate.
+The binding lasts for the grant, across token expiry and renewal. Changing the
+binding requires revocation first. Use a distinct connection name when one
+person connects several identities through the same software. A new connection
+can bind the same identity, so moving between clients preserves continuity.
+World returns authenticated `caller` context from `describe`; never infer it
+from an editable record. Audit and history preserve both software and identity.
+If the actor record is unreadable, `describe` returns only its type and ID.
+
+HTTP and MCP requests share a rule evaluation budget of 100,000 expression
+steps, configurable with `--rule-step-limit`. Work includes queries, permission
+checks and every operation in a batch. Exhausting it refuses the operation and
+rolls back its transaction. `--identity-rate-limit N` optionally caps requests
+per minute for an actor and identity across all its connections and tokens. The
+in-memory rate counters reset on restart; record quotas belong in definition
+constraints. Neither limit is a substitute for restricting access or isolating
+agents from sensitive tools.
+
+Trusted in-process integrations can use
+`with store.as_caller(agent="client", identity="opaque-id", rule_steps=100000):`.
+That context is reset on exit and isolated across threads and asynchronous
+contexts. It is not an API for untrusted record content.

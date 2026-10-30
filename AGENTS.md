@@ -199,6 +199,16 @@ The comparison measures what an agent pays to use the records:
 Change the contract before the storage engine. Replace SQLite only when a
 measurement shows it is the limit.
 
+### Persistent identities are separate from software connections
+
+Ben approved the Social experiment recommendations on 2026-10-29. An issuer may
+bind a persistent `identity` to a person's software grant. Rules see trusted
+`caller.identity` and `caller.agent`; display names confer no authority. The
+binding cannot change while the grant stands. History records the person,
+software and identity. Definitions can use `$identity` defaults, but create rules
+must still reject forged authorship. This is generic engine functionality;
+Social's identities, accounts and definition belong in Teamworld.
+
 ## Layout
 
 - `world/` is the engine: storage, validation, versions, history, the HTTP
